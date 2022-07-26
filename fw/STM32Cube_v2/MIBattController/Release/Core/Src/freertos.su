@@ -1,0 +1,3 @@
+freertos.c:62:13:configureTimerForRunTimeStats	0	static
+freertos.c:67:22:getRunTimeCounterValue	0	static
+freertos.c:74:6:vApplicationStackOverflowHook	0	static

@@ -1,0 +1,17 @@
+all: ../build_number.h
+
+../build.number:
+		if [ ! -r ../build.number ]; then \
+			echo build_number=1 > ../build.number; \
+		fi
+
+bump.build.number:
+		source ../build.number; \
+		echo "build_number=$$((build_number + 1))" > ../build.number
+
+.PHONY: bump.build.number
+post-build: bump.build.number
+
+../build_number.h: ../build.number
+		source ../build.number; \
+		echo "#define BUILD_NUMBER $$build_number" > $@
