@@ -1,0 +1,184 @@
+# For PCBs designed using KiCad: http://www.kicad-pcb.org/
+# Format documentation: http://kicad-pcb.org/help/file-formats/
+
+# Temporary files
+*.000
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.sch-bak
+*~
+_autosave-*
+*.tmp
+*-save.pro
+*-save.kicad_pcb
+fp-info-cache
+
+# Netlist files (exported from Eeschema)
+*.net
+
+# Autorouter files (exported from Pcbnew)
+*.dsn
+*.ses
+
+# Exported BOM files
+*.xml
+*.csv
+
+__Previews
+History/
+Project Logs*/
+#Project Outputs*/
+Launching*/
+*.xltx
+*.log
+*.WAS
+*.bak
+*.dat
+*.htm
+*.Cam
+
+*.step
+Screenshot 2022-04-06 195022.png
+Screenshot 2022-04-07 110545.png
+Screenshot 2022-04-07 110651.png
+Screenshot 2022-04-07 110729.png
+Screenshot 2022-04-07 110830.png
+stm32l431rc.pdf
+WB.PcbLib
+WB.SchLib
+Infineon-OptiMOS_PowerMOSFET_PSpice_60V_N-Channel-SimulationModels-v02_00-EN/
+R.jpg
+Modul-BMS-10s-15A-Li-ion-18650-36V-42V-Ladowarka-Kod-producenta-10S15A.jpg
+LPKF_Job_tx.OutJob
+Infineon-OptiMOS_PowerMOSFET_PSpice_60V_N-Channel-SimulationModels-v02_00-EN.zip
+adc cubemx for scarybird (working).png
+Grid tie micro inverter powered by battery !.url
+fw/conti_battery_FW_beta inny egzemplaz.bin
+fw/conti_battery_FW_beta.bin
+fw/Powerseq.pcs
+fw/STM32Cube_v2/MIBattController/bckp/
+HW/R1/Gerber2L_Job.OutJob
+HW/R1/panel_sch.OutJob
+HW/R1/PDF_Job.OutJob
+HW/R1/PDF_SCH_Job.OutJob
+HW/R1/Project Outputs for Battery_4_mI_R1/Design Rule Check - microInv_batt_controller.drc
+HW/R1/Project Outputs for Battery_4_mI_R1/Design Rule Check - microInv_batt_controller.html
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Status Report.Txt
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/BOM/Bill of Materials-Battery_4_mI_R1.xlsx
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.apr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.EXTREP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GBL
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GBO
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GBP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GBS
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GD1
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GG1
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GKO
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GM1
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GPB
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GPT
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GTL
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GTO
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GTP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.GTS
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.REP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller.RUL
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/Gerber/microInv_batt_controller-macro.APR_LIB
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller.apr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller.EXTREP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller.REP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller.RUL
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Copper_Signal_Bot.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Copper_Signal_Top.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Drawing_1.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Drillmap_1.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Keep-out.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Legend_Bot.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Legend_Top.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Mechanical_1.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_NPTH_Drill.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Pads_Bot.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Pads_Top.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Paste_Bot.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Paste_Top.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Profile.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_PTH_Drill.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Soldermask_Bot.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller_Soldermask_Top.gbr
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/GerberX2/microInv_batt_controller-macro.APR_LIB
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/IPC2581/microInv_batt_controller.cvg
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller.DRL
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller.DRR
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller.LDP
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller-BoardEdgeRout.TXT
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller-NonPlated.TXT
+HW/R1/Project Outputs for Battery_4_mI_R1/Battery_4_mI_R1 (2022-04-28)/NC Drill/microInv_batt_controller-Plated.TXT
+HW/R2/block diagram.SchDoc
+HW/R2/Changelog.txt
+HW/R2/Gerber2L_Job.OutJob
+HW/R2/panel_sch.OutJob
+HW/R2/PDF_Job.OutJob
+HW/R2/PDF_SCH_Job.OutJob
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Status Report.Txt
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/BOM/Bill of Materials-Battery_4_mI_R2.xlsx
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.apr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.EXTREP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GBL
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GBO
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GBP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GBS
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GD1
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GG1
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GKO
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GM1
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GPB
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GPT
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GTL
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GTO
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GTP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.GTS
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.REP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller.RUL
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/Gerber/microInv_batt_controller-macro.APR_LIB
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller.apr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller.EXTREP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller.REP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller.RUL
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Copper_Signal_Bot.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Copper_Signal_Top.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Drawing_1.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Drillmap_1.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Keep-out.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Legend_Bot.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Legend_Top.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Mechanical_1.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_NPTH_Drill.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Pads_Bot.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Pads_Top.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Paste_Bot.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Paste_Top.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Profile.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_PTH_Drill.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Soldermask_Bot.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller_Soldermask_Top.gbr
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/GerberX2/microInv_batt_controller-macro.APR_LIB
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/IPC2581/microInv_batt_controller.cvg
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller.DRL
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller.DRR
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller.LDP
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller-BoardEdgeRout.TXT
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller-NonPlated.TXT
+HW/R2/Project Outputs for Battery_4_mI_R2/Battery_4_mI_R2 (2022-06-20)/NC Drill/microInv_batt_controller-Plated.TXT
+HW/R1/pwm_bootstrap.asc
+HW/R1/pwm_bootstrap.op.raw
+HW/R1/pwm_bootstrap.plt
+HW/R1/pwm_bootstrap.raw
+HW/R2/Project Outputs for Battery_4_mI_R2/Design Rule Check - microInv_batt_controller.drc
+HW/R2/Project Outputs for Battery_4_mI_R2/Design Rule Check - microInv_batt_controller.html
+HW/R1/dm00218224-stm32l431xx-device-errata-stmicroelectronics.pdf
+HW/R1/rm0394-stm32l41xxx42xxx43xxx44xxx45xxx46xxx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+fw/simplified algorythm.drawio
+fw/simplified algorythm.drawio.pdf
+fw/simplified algorythm.png
+fw/simplified algorythm.svg
