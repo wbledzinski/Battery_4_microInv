@@ -45,7 +45,7 @@
 //#define DEBUG_EN		1	//comment to get production functionality
 //#define TESTING_VALUES	1	//comment to get production values
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -53,24 +53,25 @@
 #define TICKS_ONEDAY	23	//counter ticks for one day (default 23)
 #define RX_BFR_SIZE 127		//uart 1
 #define TX_BFR_SIZE 1023		//uart 1
-#define NO_FLASH_PAGES	48	//number of flash pages for storing statistics to flash
+#define NO_FLASH_PAGES	64	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		80	//Mosfet max operating temperature *C
-#define PV_CURRENT_MIN		300	//in 0.001A, min PV curent to assume that it is daylight
-#define INV_CURRENT_MIN		300	//in 0.001A, min inverter current to assume that inv transfers energy to mains
-#define INV_CURRENT_MAX		13000	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
+#define PV_CURRENT_MIN		270	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm
+#define PV_CURRENT_DAYLIGHT	120	//in 0.001A, min PV curent to assume that it is daylight - for day time calculation only
+#define INV_CURRENT_MIN		270	//in 0.001A, min inverter current to assume that inv transfers energy to mains
+#define INV_CURRENT_MAX		12500	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
 #define INV_CURR_SC			18000	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
 #define PV_OCV_VOLGATE		440	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
 #define BATT_CRITICAL_MIN_VOLTAGE	240	//in 0.1V, min limit for charging
 #define BATT_MIN_VOLTAGE	345	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
 #define BATT_MAX_VOLTAGE	401	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
 #define BATT_VOLTAGE_MAXHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
-#define BATT_VOLTAGE_MINHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
+#define BATT_VOLTAGE_MINHYSTERESIS	22	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
 #define SECONDS_HOUR		3600	//to calculate Watt-hours from Watt-seconds
 #define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
 #define LEDSTATUS_TIMER_MED			3		//4 seconds cycle
 #define LEDSTATUS_TIMER_SHORT		1		//2 seconds cycle
 #define TIME2RESET_INV				2500	//30min/1800s, 42m/2500s; if INV not working for longer than ... seconds perform reset procedure
-#define TIME2OVLD_INV				45		//maximum time of overload,seconds, during battery discharge
+#define TIME2OVLD_INV				35		//maximum time of overload,seconds, during battery discharge
 #define TOUT_BATTRECHARGE			600		//600s/10m time limit for battery recharge
 #define DUSK_TIME1					60*60	//60 minutes	delayed INV ON after dusk. in seconds
 #define DUSK_TIME2					2*60*60	//2*60 minutes
@@ -211,20 +212,37 @@ typedef struct		//should have even number of uint32_t due to 64bit word save fla
 	uint32_t InvResetCntr;			//counter, number of reset procedures performed (more than 30minutes without conversion during daytime); includes InvExtResetCnt value
 	uint32_t InvFaultCntr;			//counter, number of occurences for Inverter Fault condition (no conversion from PV)
 	uint32_t MaxTempInvMos;			//max recorded Inverter mosfet temp
+	uint32_t MaxTempInvMosCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MaxTempBatMos;			//max recorded battery mosfet temp
+	uint32_t MaxTempBatMosCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MaxInvCurrent;			//max recorded inverter current
+	uint32_t MaxInvCurrentCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MaxPVCurrent;			//max recorded PV current
+	uint32_t MaxPVCurrentCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MaxBatVoltage;			//18. max recorded battery voltage
+	uint32_t MaxBatVoltageCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MinBatVoltage;			//19.min recorded battery voltage
+	uint32_t MinBatVoltageCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t InvOvcCounter;			//20. counter, number of resets due to Inverter over current; during battery discharge
 	uint32_t InvExtResetCnt;		//21. counter, number of resets due to Ext reset signal
-	uint32_t Dschg_Ah_lastFull;			//discharge mAh during end of last discharge
+	uint32_t Dschg_Ah_lastFull;		//discharge mAh during end of last discharge, today
+	uint32_t Dschg_Ah_lastFull_1;		//discharge mAh during end of last discharge, yesterday
+	uint32_t Dschg_Ah_lastFull_2;		//discharge mAh during end of last discharge, yesterday
+	uint32_t Dschg_Ah_lastFull_3;		//discharge mAh during end of last discharge, yesterday
 	uint32_t Dschg_Ah_current;		//current dsch mAh
-	uint32_t Chg_Ah_lastFull;			//charge mAh during end of last charge
+	uint32_t Chg_Ah_lastFull;		//charge mAh during end of last charge
+	uint32_t Chg_Ah_last;			//charge mAh at end of the day/beginig of the night (stored in 900 second of the dusktime)
+	uint32_t Chg_Ah_1;				//charge mAh at end of the yesterday/beginig of the night (stored in 900 second of the dusktime)
+	uint32_t Chg_Ah_2;				//charge mAh at end of the -2day/beginig of the night (stored in 900 second of the dusktime)
+	uint32_t Chg_Ah_3;				//charge mAh at end of the -3day/beginig of the night (stored in 900 second of the dusktime)
 	uint32_t Chg_Ah_current;		//current charge mAh
-	uint32_t Dschg_Volt_lastFull;		//battery voltage in 0.1V at the end of discharge
+	uint32_t Dschg_Volt_lastFull;	//battery voltage in 0.1V at the end of discharge
 	uint32_t Chg_Volt_lastFull;		//battery voltage in 0.1V at the end of charge
-	uint32_t nousedvar;		//add something here to make number of variables even
+	uint32_t DayDuration_current;	//current day duration
+	uint32_t DayDuration_1;			//yesterday day duration
+	uint32_t DayDuration_2;			//day before yesterday day duration
+	uint32_t DayDuration_3;			//2 days before yesterday day duration
+	//uint32_t nousedvar;		//add something here to make number of variables even
 }_WhStatistics;
 
 _WhStatistics StatCurrentWh, Stat_Flash;
@@ -245,6 +263,7 @@ typedef struct
 	uint32_t Dschg_cycle_c2;		//used only as a flag
 	uint32_t Chg_cycle_c2;			//used only as a flag
 	uint32_t InvFault;				//used only as a flag
+	uint32_t InvOutShorted;			//used only as a flag
 	uint32_t Time_DuskTime;			//time passed from dusk (not stored in statsFlash, just current night)
 	uint32_t ChgAs;					//charge ampere-seconds, in 0,1As
 	uint32_t DschgAs;				//discharge ampere-seconds, in 0,1As
@@ -586,6 +605,7 @@ void ResetInverterNight(void)
 		else if (Adc1Measurements.Inv_current > INV_CURR_SC)	//considered as short-circuit
 		{
 			TimeToResetInv = 0;
+			StatCountFlagsWs.InvOutShorted = 1;
 		}
 #if HW_VER > 01
 		if (FlagExt_I == 1)
@@ -604,24 +624,28 @@ void ResetInverterNight(void)
 		BatteryMOS_OFF();			//disconnect load (HW02>)and..
 #endif
 		InverterMOS_OFF();			//disconnect load
-		StateResetInv = 2;
+		StateResetInv = 25;			//for regular overload wait only 2 seconds
+		if (StatCountFlagsWs.InvOutShorted) StateResetInv = 2;	//for short circuit wait 25 seconds
 		//StatCurrentWh.InvResetCntr++;
 		StatCurrentWh.InvOvcCounter++;
 		ExtOut_InvResetStart();
 		break;
 	case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10:
-	case 11: case 12: case 13: case 14: case 15: case 16:
-		//wait 15 seconds
+	case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 18:
+	case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
+		//wait 25 seconds
 		StateResetInv++;
 		break;
-	case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
+	case 27: case 28: case 29: case 30: case 31: case 32: case 33: case 34: case 35: case 36:
 		//ON inverter MOS and wait 10 seconds
 		InverterMOS_ON();
 		BatteryMOS_ON();
 		StateResetInv++;
 		ExtOut_InvResetStop();
+		if (Adc1Measurements.Inv_current > INV_CURR_SC) StateResetInv = 1;	//if SC occurs again reset procedure instantly
 		break;
-	case 27:	//now return to regular operation of controller
+	case 37:	//now return to regular operation of controller
+		StatCountFlagsWs.InvOutShorted = 0;
 		StateResetInv=0;
 		FlagResetInverter = 0;	//procedure is off
 		TimeToResetInv = TIME2OVLD_INV;	//reset timer for 30 minutes
@@ -819,6 +843,38 @@ void StoreStatistics2FLASH(void)
 	HAL_FLASH_Lock();
 	osTimerStart(myTimer01Handle, 100);
 }
+/*Function storing last  statistics to FLASH memory */
+void DeleteStatistics2FLASH(void)
+{
+	uint32_t temp, i;
+	FLASH_EraseInitTypeDef flash_conf;
+
+	osTimerStop(myTimer01Handle);
+	for(i = 0; i < sizeof(Stat_Flash); i++)
+	{
+		((uint8_t *) &StatCurrentWh)[i] = 0;
+		((uint8_t *) &Stat_Flash)[i] = 0;
+	}
+	RecentPage_pointer = 0;
+	flash_conf.TypeErase = FLASH_TYPEERASE_PAGES;
+	flash_conf.NbPages = 1;
+	flash_conf.Page = RecentPage_pointer + 64;
+	flash_conf.Banks = FLASH_BANK_1;
+#ifndef DEBUG_EN
+	HAL_FLASH_Unlock();
+	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGSERR );
+	while (RecentPage_pointer < NO_FLASH_PAGES-1)
+	{
+		HAL_FLASHEx_Erase(&flash_conf, &temp);
+		RecentPage_pointer++;
+		flash_conf.Page = RecentPage_pointer + 64;
+	}
+
+#endif
+	HAL_FLASH_Lock();
+	RecentPage_pointer = 0;
+	osTimerStart(myTimer01Handle, 100);
+}
 /*function launched every second to calculate Watt-seconds for given machine state on basis of flags */
 void Calculate_WattSeconds(void)
 {
@@ -937,16 +993,44 @@ void Calculate_WattSeconds(void)
 		StatCurrentWs.DschgAs += (Adc1Measurements.PV_current)
 	}
 #endif
-	if (Adc1Measurements.NTC2_Inverter_mos > StatCurrentWh.MaxTempInvMos) StatCurrentWh.MaxTempInvMos = Adc1Measurements.NTC2_Inverter_mos;
-	if (Adc1Measurements.NTC3_Battery_mos > StatCurrentWh.MaxTempBatMos) StatCurrentWh.MaxTempBatMos = Adc1Measurements.NTC3_Battery_mos;
-	if (Adc1Measurements.Inv_current > StatCurrentWh.MaxInvCurrent) StatCurrentWh.MaxInvCurrent = Adc1Measurements.Inv_current;
-	if (Adc1Measurements.PV_current > StatCurrentWh.MaxPVCurrent) StatCurrentWh.MaxPVCurrent = Adc1Measurements.PV_current;
-	if (Adc1Measurements.Batt_voltage > StatCurrentWh.MaxBatVoltage) StatCurrentWh.MaxBatVoltage = Adc1Measurements.Batt_voltage;
+	if (Adc1Measurements.NTC2_Inverter_mos >= StatCurrentWh.MaxTempInvMos)
+	{
+		StatCurrentWh.MaxTempInvMos = Adc1Measurements.NTC2_Inverter_mos;
+		StatCurrentWh.MaxTempInvMosCntr++;
+	}
+	if (Adc1Measurements.NTC3_Battery_mos >= StatCurrentWh.MaxTempBatMos)
+	{
+		StatCurrentWh.MaxTempBatMos = Adc1Measurements.NTC3_Battery_mos;
+		StatCurrentWh.MaxTempBatMosCntr++;
+	}
+	if (Adc1Measurements.Inv_current >= StatCurrentWh.MaxInvCurrent)
+	{
+		StatCurrentWh.MaxInvCurrent = Adc1Measurements.Inv_current;
+		StatCurrentWh.MaxInvCurrentCntr++;
+	}
+	if (Adc1Measurements.PV_current >= StatCurrentWh.MaxPVCurrent)
+	{
+		StatCurrentWh.MaxPVCurrent = Adc1Measurements.PV_current;
+		StatCurrentWh.MaxPVCurrentCntr++;
+	}
+	if (Adc1Measurements.Batt_voltage >= StatCurrentWh.MaxBatVoltage)
+	{
+		StatCurrentWh.MaxBatVoltage = Adc1Measurements.Batt_voltage;
+		StatCurrentWh.MaxBatVoltageCntr++;
+	}
 	if (Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
+	{
+		if (StatCurrentWh.MinBatVoltage <= BATT_CRITICAL_MIN_VOLTAGE)	//first launch value is "0", this 'if' is to cover that option
 		{
-		if (StatCurrentWh.MinBatVoltage < BATT_CRITICAL_MIN_VOLTAGE) StatCurrentWh.MinBatVoltage = Adc1Measurements.Batt_voltage;
-		else if (Adc1Measurements.Batt_voltage < StatCurrentWh.MinBatVoltage) StatCurrentWh.MinBatVoltage = Adc1Measurements.Batt_voltage;
+			StatCurrentWh.MinBatVoltage = Adc1Measurements.Batt_voltage;
+			StatCurrentWh.MinBatVoltageCntr++;
 		}
+		else if (Adc1Measurements.Batt_voltage <= StatCurrentWh.MinBatVoltage)
+		{
+			StatCurrentWh.MinBatVoltage = Adc1Measurements.Batt_voltage;
+			StatCurrentWh.MinBatVoltageCntr++;
+		}
+	}
 }
 
 /*function launched every hour to calculate Watt-hours watt-seconds hourly statistics */
@@ -1577,13 +1661,19 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : C3_Pin C1_Pin */
   GPIO_InitStruct.Pin = C3_Pin|C1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : C4_Pin C2_Pin CD_Pin */
-  GPIO_InitStruct.Pin = C4_Pin|C2_Pin|CD_Pin;
+  /*Configure GPIO pins : C4_Pin C2_Pin */
+  GPIO_InitStruct.Pin = C4_Pin|C2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : CD_Pin EXT_I_Pin */
+  GPIO_InitStruct.Pin = CD_Pin|EXT_I_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED4_Pin LED3_Pin LED2_Pin LED1_Pin */
@@ -1593,15 +1683,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : EXT_I_Pin */
-  GPIO_InitStruct.Pin = EXT_I_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(EXT_I_GPIO_Port, &GPIO_InitStruct);
-
 }
 
 /* USER CODE BEGIN 4 */
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	// UART Rx Complete Callback;
 	// Rx Complete is called by: DMA (automatically), if it rolls over
@@ -1615,8 +1700,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(__HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE)) {									// Check if it is an "Idle Interrupt"
 		__HAL_UART_CLEAR_IDLEFLAG(&huart1);												// clear the interrupt
 		RxCounter++;																	// increment the Rx Counter
-
-		//uint8_t TxSize = 0;
+		uint8_t TxSize = 0;
 		uint16_t start = RxBfrPos;														// Rx bytes start position (=last buffer position)
 		RxBfrPos = RX_BFR_SIZE - (uint16_t)huart->hdmarx->Instance->CNDTR;				// determine actual buffer position
 		uint16_t len = RX_BFR_SIZE;														// init len with max. size
@@ -1631,12 +1715,65 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		} else {
 			len = RX_BFR_SIZE + 2;														// dual rollover error
 		}
+
+		if(len && (len <= RX_BFR_SIZE)) {
+			// create response message
+//			sprintf(TxBuffer, "ACK RxC:%d S:%d L:%d RO:%d RXp:%d >>", RxCounter, start, len, RxRollover, RxBfrPos);
+//			TxSize = strlen(TxBuffer);
+			// add received bytes to TxBuffer
+//			uint8_t i;
+//			for(i = 0; i < len; i++) *(TxBuffer + TxSize + i) = *(RxBuffer + ((start + i) % RX_BFR_SIZE));
+//			TxSize += i;
+			if (RxBuffer[start] == 'f' || RxBuffer[start] == 'F') Flag_ShowStats = 4;	//show statistics from Flash
+			if (RxBuffer[start] == 'c' || RxBuffer[start] == 'C') Flag_ShowStats = 5;	//show current statistics
+			if (RxBuffer[start] == 'w' || RxBuffer[start] == 'W') Flag_ShowStats = 3;	//show WattHours statistics
+			if (RxBuffer[start] == 'e' || RxBuffer[start] == 'E')						//erase statistics in flash - only newest
+			{
+				uint32_t i, temp;
+				temp = StatCurrentWh.FlashPageCounter;
+				for(i = 0; i < sizeof(Stat_Flash); i++)		//clear statistics that will be stored in flash at top of the hour
+				{
+					((uint8_t *) &StatCurrentWh)[i] = 0;
+					((uint8_t *) &Stat_Flash)[i] = 0;
+				}
+				StatCurrentWh.FlashPageCounter = temp;
+				Stat_Flash.FlashPageCounter = temp;
+				Flag_ShowStats = 4;
+			}
+			if (RxBuffer[start] == 'd' || RxBuffer[start] == 'D')						//delete current and historical statistics stored in flash
+			{
+				DeleteStatistics2FLASH();
+				Flag_ShowStats = 4;
+			}
+			if (RxBuffer[start] == 'h' || RxBuffer[start] == 'H' || RxBuffer[start] == '?')
+			{
+				Flag_ShowStats = 60;
+				sprintf(TxBuffer, "\r\nhelp: \r\n"
+						"H - show this help\r\n"
+						"C - show configuration and firmware version\r\n"
+						"F - show last statistics stored in Flash mem\r\n"
+						"E - erase current stat values stored in flash, will be saved at top of the hour. FlashPageCounter will be preserved, historical data preserved\r\n"
+						"D - Delete all stat data saved in flash, current and historical, instantly, !irreversible!\r\n"
+						"W - show Watt-Hours stat\r\n"
+						"\r\n"
+						);
+			}
+
+		} else {
+			// buffer overflow error:
+//			sprintf(TxBuffer, "NAK RX BUFFER OVERFLOW ERROR %d\r\n", (len - RX_BFR_SIZE));
+//			TxSize = strlen(TxBuffer);
+		}
+
+//		HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);						// send a response
+
 		RxRollover = 0;																	// reset the Rollover variable
 	} else {
 		// no idle flag? --> DMA rollover occurred
 		RxRollover++;		// increment Rollover Counter
 	}
 }
+
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 	// UART Tx Complete Callback;
@@ -1734,6 +1871,16 @@ void DischargeProcedure(void)
 	StatCountFlagsWs.Time_BattRecharge=0;	//you cant recharge during night, reset procedure
 	StatCountFlagsWs.Time_NightTime=1;	//its nighttime, enable to count nightime in 1Sectimer
 	StatCountFlagsWs.Time_DuskTime=1;	//its nightitme, enable flag to count time passed from recent dusk;
+	if (StatCurrentWs.Time_DuskTime == 900)	//15 minutes in the night/after dusk store Chg_Ah_last
+	{
+		StatCurrentWh.Chg_Ah_3 = StatCurrentWh.Chg_Ah_2;
+		StatCurrentWh.Chg_Ah_2 = StatCurrentWh.Chg_Ah_1;
+		StatCurrentWh.Chg_Ah_1 = StatCurrentWh.Chg_Ah_last;
+		StatCurrentWh.Chg_Ah_last = StatCurrentWh.Chg_Ah_current;
+		StatCurrentWh.DayDuration_3 = StatCurrentWh.DayDuration_2;
+		StatCurrentWh.DayDuration_2 = StatCurrentWh.DayDuration_1;
+		StatCurrentWh.DayDuration_1 = StatCurrentWh.DayDuration_current;
+	}
 	//batt OK to discharge?
 	if (Adc1Measurements.Batt_voltage > (BATT_MIN_VOLTAGE-VoltHysteresisDsChg))
 	{//yes, OK to discharge
@@ -1766,7 +1913,10 @@ void DischargeProcedure(void)
 #endif
 		VoltHysteresisDsChg = 0;
 		VoltHysteresisChg = 0;		//most likely will be cleared by uP reset anyway
-		StatCurrentWh.Dschg_Ah_lastFull=StatCurrentWh.Dschg_Ah_current;	//store fully dschg Ah
+		StatCurrentWh.Dschg_Ah_lastFull_3 = StatCurrentWh.Dschg_Ah_lastFull_2;
+		StatCurrentWh.Dschg_Ah_lastFull_2 = StatCurrentWh.Dschg_Ah_lastFull_1;
+		StatCurrentWh.Dschg_Ah_lastFull_1 = StatCurrentWh.Dschg_Ah_lastFull;
+		StatCurrentWh.Dschg_Ah_lastFull = StatCurrentWh.Dschg_Ah_current;	//store fully dschg Ah
 		if (!StatCountFlagsWs.Dschg_cycle_c2 && StatCountFlagsWs.Dschg_cycle_count)
 		{
 			StatCurrentWh.Dschg_Volt_lastFull = Adc1Measurements.Batt_voltage;
@@ -1796,6 +1946,100 @@ void DischargeProcedure(void)
 			}
 		}
 	}
+}
+
+void PrintConfig2TxBuffer(void)
+{
+	sprintf(TxBuffer,  "\r\nBattery controller for On-Grid PV microinverter\r\n"
+				"HW ver %u\r\n"
+				"FW Built "__DATE__", "__TIME__" \r\n**** WTB Wojciech Błędziński **** bendziol@o2.pl\r\n"
+				"Config\r\n"
+				"NO_FLASH_PAGES %u, "
+				"MOSFET_MAX_TEMP %u, "
+				"PV_CURRENT_MIN %u, "
+				"INV_CURRENT_MIN %u, "
+				"PV_OCV_VOLGATE %u, "
+				"BATT_MIN_VOLTAGE %u, "
+				"BATT_CRITICAL_MIN_VOLTAGE %u, "
+				"BATT_MAX_VOLTAGE %u, "
+				"BATT_VOLTAGE_MAXHYSTERESIS %u, "
+				"BATT_VOLTAGE_MINHYSTERESIS %u, "
+				"TIME2RESET_INV %u, "
+				"TIME2OVLD_INV %u, "
+				"INV_CURRENT_MAX %u, "
+				"INV_CURR_SC %u, "
+				"\r\nStart\n\r"
+				,HW_VER,NO_FLASH_PAGES,MOSFET_MAX_TEMP,PV_CURRENT_MIN,INV_CURRENT_MIN,PV_OCV_VOLGATE
+				,BATT_MIN_VOLTAGE,BATT_CRITICAL_MIN_VOLTAGE,BATT_MAX_VOLTAGE,BATT_VOLTAGE_MAXHYSTERESIS
+				,BATT_VOLTAGE_MINHYSTERESIS,TIME2RESET_INV, TIME2OVLD_INV, INV_CURRENT_MAX, INV_CURR_SC
+				);
+}
+void PrintFlashStats2TxBuffer(void)
+{
+	sprintf(TxBuffer, "Stat_Flash:FlashPCount %u, TNightTime %u,TNoBat2Chg %u,TNoInv %u, "
+	    	    		"WhBattIn %u; "
+	    	    		"WhBattNoInv %u; WhBattOut %u, "
+	    	    		"WhBattRech %u; WhInv %u, "
+	    				"Dschgcy %u; Chgcy %u, "
+	    	    		"InvFaultCntr %u; InvResetCntr %u\r\n"
+	    	    		"MaxTempBatMos %u; MaxTempInvMos %u, "
+						"MaxTempInvMosCntr %u; MaxTempBatMosCntr %u, "
+	    	    		"MaxInvCurrent %u, MaxPVCurrent %u, "
+						"MaxInvCurrentCntr %u; MaxPVCurrentCntr %u, "
+	    	    		"MaxBatVolt %u, MinBatVolt %u, "
+						"MaxBatVoltageCntr %u, MinBatVoltageCntr %u"
+	    	    		"InvOvcCntr %u, InvExtRstCnt %u, "
+	    	    		"ChmAhLastF %u, DchmAhLastF %u, "
+	    	    		"DschVlastF %u, ChVlastF %u, "
+	    	    		"ChgAhlast %u, "
+	    	    		"\r\n"
+	    	    ,(unsigned int)StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
+	    		,(unsigned int)StatCurrentWh.Wh_BattIn
+	    	    ,(unsigned int)StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
+	    		,(unsigned int)StatCurrentWh.Wh_BattRecharge, (unsigned int )StatCurrentWh.Wh_Inverter
+	    		,(unsigned int)StatCurrentWh.Dschg_cycle_count, (unsigned int )StatCurrentWh.Chg_cycle_count
+	    		,(unsigned int)StatCurrentWh.InvFaultCntr, (unsigned int)StatCurrentWh.InvResetCntr
+	    		,(unsigned int)StatCurrentWh.MaxTempBatMos, (unsigned int)StatCurrentWh.MaxTempInvMos
+				,(unsigned int)StatCurrentWh.MaxTempInvMosCntr, (unsigned int)StatCurrentWh.MaxTempBatMosCntr
+	    		,(unsigned int)StatCurrentWh.MaxInvCurrent, (unsigned int)StatCurrentWh.MaxPVCurrent
+				,(unsigned int)StatCurrentWh.MaxInvCurrentCntr, (unsigned int)StatCurrentWh.MaxPVCurrentCntr
+	    		,(unsigned int)StatCurrentWh.MaxBatVoltage, (unsigned int)StatCurrentWh.MinBatVoltage
+				,(unsigned int)StatCurrentWh.MaxBatVoltageCntr, (unsigned int)StatCurrentWh.MinBatVoltageCntr
+	    		,(unsigned int)StatCurrentWh.InvOvcCounter, (unsigned int)StatCurrentWh.InvExtResetCnt
+	    		,(unsigned int)StatCurrentWh.Chg_Ah_lastFull, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull
+	    		,(unsigned int)StatCurrentWh.Dschg_Volt_lastFull, (unsigned int)StatCurrentWh.Chg_Volt_lastFull
+	    		,(unsigned int)StatCurrentWh.Chg_Ah_last
+	    	    );
+}
+
+void ShowWhStats(void)
+{
+	sprintf(TxBuffer, "Wh.FlashPage: %u, TNightTime %u,TNoBatt2Chg %u,TNoInv %u, "
+    		"WhBattIn %u; "
+    		"WhBattNoInv %u; WhBattOut %u, "
+    		"WhBattRech %u; WhInv %u, "
+			"DschgC %u; ChgC %u, "
+			"InvFaultCntr %u; InvResetCntr %u, "
+			"ChmAhcur %u, DchmAhCur %u, "
+			"DchmAh-1 %u, DchmAh-2 %u, DchmAh-3 %u, "
+			"ChmAhLF %u, DchmAhLF %u, "
+			"ChgmAhL %u; ChgmAh-1 %u; ChgmAh-2 %u; ChgmAh-3 %u;"
+			"DayCurr %u, Day-1 %u, "
+			"Day-2 %u, Day-3 %u, "
+    		"\r\n"
+    ,(unsigned int )StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
+	,(unsigned int )StatCurrentWh.Wh_BattIn
+    ,(unsigned int )StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
+	,(unsigned int )StatCurrentWh.Wh_BattRecharge, (unsigned int )StatCurrentWh.Wh_Inverter
+	,(unsigned int )StatCurrentWh.Dschg_cycle_count, (unsigned int )StatCurrentWh.Chg_cycle_count
+	,(unsigned int)StatCurrentWh.InvFaultCntr, (unsigned int)StatCurrentWh.InvResetCntr
+	,(unsigned int)StatCurrentWh.Chg_Ah_current, (unsigned int)StatCurrentWh.Dschg_Ah_current
+	,(unsigned int)StatCurrentWh.Chg_Ah_lastFull, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull
+	,(unsigned int)StatCurrentWh.Dschg_Ah_lastFull_1, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull_2, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull_3
+	,(unsigned int)StatCurrentWh.Chg_Ah_last, (unsigned int)StatCurrentWh.Chg_Ah_1, (unsigned int)StatCurrentWh.Chg_Ah_2, (unsigned int)StatCurrentWh.Chg_Ah_3
+	,(unsigned int)StatCurrentWh.DayDuration_current, (unsigned int)StatCurrentWh.DayDuration_1
+	,(unsigned int)StatCurrentWh.DayDuration_2, (unsigned int)StatCurrentWh.DayDuration_3
+    );
 }
 /* USER CODE END 4 */
 
@@ -1827,29 +2071,7 @@ void StartDefaultTask(void *argument)
 	HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 1);
 	HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 1);
 	HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, 1);
-	sprintf(TxBuffer,  "\r\nBattery controller for On-Grid PV microinverter\r\n"
-			"HW ver %u\r\n"
-			"FW Built "__DATE__", "__TIME__" \r\n**** WTB Wojciech Błędziński **** bendziol@o2.pl\r\n"
-			"Config\r\n"
-			"NO_FLASH_PAGES %u, "
-			"MOSFET_MAX_TEMP %u, "
-			"PV_CURRENT_MIN %u, "
-			"INV_CURRENT_MIN %u, "
-			"PV_OCV_VOLGATE %u, "
-			"BATT_MIN_VOLTAGE %u, "
-			"BATT_CRITICAL_MIN_VOLTAGE %u, "
-			"BATT_MAX_VOLTAGE %u, "
-			"BATT_VOLTAGE_MAXHYSTERESIS %u, "
-			"BATT_VOLTAGE_MINHYSTERESIS %u, "
-			"TIME2RESET_INV %u, "
-			"TIME2OVLD_INV %u, "
-			"INV_CURRENT_MAX %u, "
-			"INV_CURR_SC %u, "
-			"\r\nStart\n\r"
-			,HW_VER,NO_FLASH_PAGES,MOSFET_MAX_TEMP,PV_CURRENT_MIN,INV_CURRENT_MIN,PV_OCV_VOLGATE
-			,BATT_MIN_VOLTAGE,BATT_CRITICAL_MIN_VOLTAGE,BATT_MAX_VOLTAGE,BATT_VOLTAGE_MAXHYSTERESIS
-			,BATT_VOLTAGE_MINHYSTERESIS,TIME2RESET_INV, TIME2OVLD_INV, INV_CURRENT_MAX, INV_CURR_SC
-			);
+	PrintConfig2TxBuffer();
 	TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
 	//BatteryMOS_ON();
@@ -1871,32 +2093,7 @@ void StartDefaultTask(void *argument)
 	HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 0);
 	HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 0);
 	HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, 0);
-    sprintf(TxBuffer, "Stat_Flash:FlashPCount %u, TNightTime %u,TNoBat2Chg %u,TNoInv %u, "
-    		"WhBattIn %u; "
-    		"WhBattNoInv %u; WhBattOut %u, "
-    		"WhBattRech %u; WhInv %u, "
-			"Dschgcy %u; Chgcy %u, "
-    		"InvFaultCntr %u; InvResetCntr %u\r\n"
-    		"MaxTempBatMos %u; MaxTempInvMos %u, "
-    		"MaxInvCurrent %u, MaxPVCurrent %u, "
-    		"MaxBatVolt %u, MinBatVolt %u, "
-    		"InvOvcCntr %u, InvExtRstCnt %u, "
-    		"ChmAhLastF %u, DchmAhLastF %u, "
-    		"DschVlastF %u, ChVlastF %u, "
-    		"\r\n"
-    ,(unsigned int)StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
-	,(unsigned int)StatCurrentWh.Wh_BattIn
-    ,(unsigned int)StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
-	,(unsigned int)StatCurrentWh.Wh_BattRecharge, (unsigned int )StatCurrentWh.Wh_Inverter
-	,(unsigned int)StatCurrentWh.Dschg_cycle_count, (unsigned int )StatCurrentWh.Chg_cycle_count
-	,(unsigned int)StatCurrentWh.InvFaultCntr, (unsigned int)StatCurrentWh.InvResetCntr
-	,(unsigned int)StatCurrentWh.MaxTempBatMos, (unsigned int)StatCurrentWh.MaxTempInvMos
-	,(unsigned int)StatCurrentWh.MaxInvCurrent, (unsigned int)StatCurrentWh.MaxPVCurrent
-	,(unsigned int)StatCurrentWh.MaxBatVoltage, (unsigned int)StatCurrentWh.MinBatVoltage
-	,(unsigned int)StatCurrentWh.InvOvcCounter, (unsigned int)StatCurrentWh.InvExtResetCnt
-	,(unsigned int)StatCurrentWh.Chg_Ah_lastFull, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull
-	,(unsigned int)StatCurrentWh.Dschg_Volt_lastFull, (unsigned int)StatCurrentWh.Chg_Volt_lastFull
-    );
+    PrintFlashStats2TxBuffer();
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
     osTimerStart(myTimer01Handle, 100);		//start timer
@@ -1914,24 +2111,7 @@ void StartDefaultTask(void *argument)
     if (Flag_ShowStats == 3)
     {
         Flag_ShowStats = 2;
-    	sprintf(TxBuffer, "Wh.FlashPage: %u, TNightTime %u,TNoBatt2Chg %u,TNoInv %u, "
-        		"WhBattIn %u; "
-        		"WhBattNoInv %u; WhBattOut %u, "
-        		"WhBattRech %u; WhInv %u, "
-    			"DschgC %u; ChgC %u, "
-    			"InvResetCntr %u, "
-    			"ChmAhcur %u, DchmAhCur %u, "
-    			"ChmAhLF %u, DchmAhLF %u, "
-        		"\r\n"
-        ,(unsigned int )StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
-    	,(unsigned int )StatCurrentWh.Wh_BattIn
-        ,(unsigned int )StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
-    	,(unsigned int )StatCurrentWh.Wh_BattRecharge, (unsigned int )StatCurrentWh.Wh_Inverter
-		,(unsigned int )StatCurrentWh.Dschg_cycle_count, (unsigned int )StatCurrentWh.Chg_cycle_count
-		,(unsigned int )StatCurrentWh.InvResetCntr
-		,(unsigned int)StatCurrentWh.Chg_Ah_current, (unsigned int)StatCurrentWh.Dschg_Ah_current
-		,(unsigned int)StatCurrentWh.Chg_Ah_lastFull, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull
-        );
+        ShowWhStats();
     }
     else if (Flag_ShowStats == 2)
     {
@@ -1951,7 +2131,17 @@ void StartDefaultTask(void *argument)
 		,(unsigned int)StatCurrentWs.ChgAs, (unsigned int)StatCurrentWs.DschgAs
         );
     }
-    else
+    else if (Flag_ShowStats == 4)	//show flash stats
+    {
+    	PrintFlashStats2TxBuffer();
+    	Flag_ShowStats = 0;
+    }
+    else if (Flag_ShowStats == 5)		//show config
+    {
+    	PrintConfig2TxBuffer();
+    	Flag_ShowStats = 0;
+    }
+    else if (Flag_ShowStats == 1)		//show current Values
 	{
     	Flag_ShowStats = 0;
 		sprintf(TxBuffer, "%u d %u h %u m %u s "
@@ -1973,6 +2163,15 @@ void StartDefaultTask(void *argument)
 		,(unsigned int)FlagExt_I
 		);
 	}
+    else if (Flag_ShowStats == 60)		//show help
+    {
+    	if (Flag_ShowStats) Flag_ShowStats--;
+    }
+    else
+    {
+    	if (Flag_ShowStats) Flag_ShowStats--;
+    	TxBuffer[0]=0;
+    }
     TxSize = strlen(TxBuffer);
     if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
@@ -2002,6 +2201,7 @@ void StartDefaultTask(void *argument)
 					Adc1Measurements.PV_voltage > PV_OCV_VOLGATE)
 			{//yes, its day
 				InverterOn_batteryAsBackup();
+				StatCurrentWh.DayDuration_current++;
 			}//end of its day
     		else
     		{//no, its night
@@ -2023,6 +2223,7 @@ void StartDefaultTask(void *argument)
 			//is it a day?
 			if (Adc1Measurements.PV_current > PV_CURRENT_MIN || Adc1Measurements.PV_voltage > PV_OCV_VOLGATE)
 			{//yes, its day
+				StatCurrentWh.DayDuration_current++;
 				//is batt OK to charge
 				if (Adc1Measurements.Batt_voltage < (BATT_MAX_VOLTAGE+VoltHysteresisChg)  &&
 						Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
@@ -2118,6 +2319,7 @@ void Callback01(void *argument)
 								{
 									count_days = TICKS_ONEDAY;
 									Uptime.days++;
+									Uptime.hours=0;
 								}
 							}
 						}
