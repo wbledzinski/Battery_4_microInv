@@ -45,7 +45,7 @@
 //#define DEBUG_EN		1	//comment to get production functionality
 //#define TESTING_VALUES	1	//comment to get production values
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -53,16 +53,16 @@
 #define TICKS_ONEDAY	23	//counter ticks for one day (default 23)
 #define RX_BFR_SIZE 127		//uart 1
 #define TX_BFR_SIZE 1023		//uart 1
-#define NO_FLASH_PAGES	64	//number of flash pages for storing statistics to flash
+#define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		80	//Mosfet max operating temperature *C
-#define PV_CURRENT_MIN		270	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm
+#define PV_CURRENT_MIN		120	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
 #define PV_CURRENT_DAYLIGHT	120	//in 0.001A, min PV curent to assume that it is daylight - for day time calculation only
-#define INV_CURRENT_MIN		270	//in 0.001A, min inverter current to assume that inv transfers energy to mains
+#define INV_CURRENT_MIN		120	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually same as PV_CURRENT_MIN
 #define INV_CURRENT_MAX		12500	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
 #define INV_CURR_SC			18000	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
 #define PV_OCV_VOLGATE		440	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
 #define BATT_CRITICAL_MIN_VOLTAGE	240	//in 0.1V, min limit for charging
-#define BATT_MIN_VOLTAGE	345	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
+#define BATT_MIN_VOLTAGE	346	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
 #define BATT_MAX_VOLTAGE	401	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
 #define BATT_VOLTAGE_MAXHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
 #define BATT_VOLTAGE_MINHYSTERESIS	22	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
@@ -130,10 +130,12 @@
 #define CONFIG_MAINS_NOBATTDSCHG	14
 
 __attribute__((__section__(".user_data"))) const char Stats_savedInFLASH[NO_FLASH_PAGES][FLASH_PAGE_SIZE];	//matrix in flash for statistics storage
+__attribute__((__section__(".user_data"))) const char Cal_savedInFLASH[FLASH_PAGE_SIZE];	//data in flash for calibration values storage, size one full page
 //compiling with GCC STM32CubeIDE: only without optimization makes flash reading function working properly
 //any level of optimization makes flash reading function operate improperly (reading 0xFF)
 //flash writing works good even with strong optimization
 void __attribute__((optimize("O0"))) RestoreStatisticsFromFLASH();
+void __attribute__((optimize("O0"))) RestoreCalValuesFromFLASH();
 void __attribute__((optimize("O0"))) StoreStatistics2FLASH();
 /* USER CODE END PD */
 
@@ -194,6 +196,7 @@ typedef struct
 	uint32_t NTC1_PCB;
 	uint32_t NTC2_Inverter_mos;
 	uint32_t NTC3_Battery_mos;
+	uint32_t VrefInt;
 }AdcConvertVals;
 
 typedef struct		//should have even number of uint32_t due to 64bit word save flash function
@@ -264,12 +267,31 @@ typedef struct
 	uint32_t Chg_cycle_c2;			//used only as a flag
 	uint32_t InvFault;				//used only as a flag
 	uint32_t InvOutShorted;			//used only as a flag
+	uint32_t Time_Daytime;			//used only as a flag
+	uint32_t ChgStatSaved;			//used only as a flag
+	uint32_t DchgStatSaved;			//used only as a flag
 	uint32_t Time_DuskTime;			//time passed from dusk (not stored in statsFlash, just current night)
 	uint32_t ChgAs;					//charge ampere-seconds, in 0,1As
 	uint32_t DschgAs;				//discharge ampere-seconds, in 0,1As
 }_WSecondsStatistics;
 
 _WSecondsStatistics StatCurrentWs, StatCountFlagsWs;
+
+typedef struct
+{
+	int Indicator;					//indicator, if 0xff then cal values arent present - erased flash
+	int Inv_current_off;			//Inverter current offset cal value
+	int PV_current_off;				//PV current offset cal value
+	int PV_voltage;					//
+	int Batt_voltage;				//
+	int NTC1_PCB;					//
+	int NTC2_Inverter_mos;			//
+	int NTC3_Battery_mos;			//
+	int VrefInt;					//
+	int nousedvar;					//add something here to make number of variables even
+}_CalValues;
+
+_CalValues CalibrationValues;
 
 typedef struct
 {
@@ -624,7 +646,7 @@ void ResetInverterNight(void)
 		BatteryMOS_OFF();			//disconnect load (HW02>)and..
 #endif
 		InverterMOS_OFF();			//disconnect load
-		StateResetInv = 25;			//for regular overload wait only 2 seconds
+		StateResetInv = 17;			//for regular overload wait 10 seconds
 		if (StatCountFlagsWs.InvOutShorted) StateResetInv = 2;	//for short circuit wait 25 seconds
 		//StatCurrentWh.InvResetCntr++;
 		StatCurrentWh.InvOvcCounter++;
@@ -642,7 +664,7 @@ void ResetInverterNight(void)
 		BatteryMOS_ON();
 		StateResetInv++;
 		ExtOut_InvResetStop();
-		if (Adc1Measurements.Inv_current > INV_CURR_SC) StateResetInv = 1;	//if SC occurs again reset procedure instantly
+		if (Adc1Measurements.Inv_current > INV_CURR_SC) StateResetInv = 1;	//if SC occurs launch again reset procedure, instantly
 		break;
 	case 37:	//now return to regular operation of controller
 		StatCountFlagsWs.InvOutShorted = 0;
@@ -754,6 +776,64 @@ void LedStatusShow(void)
 			LedStatusTimer = LEDSTATUS_TIMER_LONG;
 		}
 	}
+}
+
+/*Function restoring  saved cal data from FLASH memory */
+void RestoreCalValuesFromFLASH(void)
+{
+int i;
+
+	for(i = 0; i < sizeof(CalibrationValues); i++)
+	{
+		((uint8_t *) &CalibrationValues)[i] = Cal_savedInFLASH[i];
+	}
+	if (CalibrationValues.Indicator == 0xffffffff)
+	{
+		for(i = 0; i < sizeof(CalibrationValues); i++)
+		{
+			((uint8_t *) &CalibrationValues)[i] = 0;
+		}
+	}
+
+}
+
+void StoreCalData2FLASH(void)
+{
+	uint32_t temp, sofar=0, PageAddress=0;
+	FLASH_EraseInitTypeDef flash_conf;
+
+	osTimerStop(myTimer01Handle);
+	StatCurrentWh.FlashPageCounter++;
+	flash_conf.TypeErase = FLASH_TYPEERASE_PAGES;
+	flash_conf.NbPages = 1;
+	flash_conf.Page = NO_FLASH_PAGES+64;
+	//flash_conf.Page = (uint32_t)&Stats_savedInFLASH[RecentPage_pointer][0];
+	flash_conf.Banks = FLASH_BANK_1;
+#ifndef DEBUG_EN
+	HAL_FLASH_Unlock();
+	__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGSERR );
+	HAL_FLASHEx_Erase(&flash_conf, &temp);// FLASH_Erase_Sector(&Stats_savedInFLASH+RecentPage_pointer, VOLTAGE_RANGE_3);
+	//HAL_FLASH_Lock();
+	//HAL_FLASH_Unlock();
+	//__HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGSERR );
+
+	 while (sofar<((sizeof(CalibrationValues)/(4*2))))	//should divided by number of bytes@word wrote at once
+	 {
+		 if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, (uint32_t)&Cal_savedInFLASH[PageAddress], ((uint64_t *) &CalibrationValues)[sofar]) == HAL_OK)
+		 {
+			 PageAddress += 8;  // use StartPageAddress += 2 for half word and 8 for double word
+			 sofar++;
+		 }
+		 else
+		 {
+		   /* Error occurred while writing data in Flash memory*/
+			 osTimerStart(myTimer01Handle, 100);
+			 return HAL_FLASH_GetError ();
+		 }
+	}
+#endif
+	HAL_FLASH_Lock();
+	osTimerStart(myTimer01Handle, 100);
 }
 
 /*Function restoring last saved statistics from FLASH memory */
@@ -924,6 +1004,11 @@ void Calculate_WattSeconds(void)
 	{
 		StatCountFlagsWs.Time_DuskTime = 0;
 		StatCurrentWs.Time_DuskTime++;
+	}
+	if (StatCountFlagsWs.Time_Daytime)		//daytime
+	{
+		StatCountFlagsWs.Time_Daytime=0;
+		StatCurrentWh.DayDuration_current++;
 	}
 	if (StatCountFlagsWs.ChgAs)		//count mAs
 	{
@@ -1188,7 +1273,8 @@ uint32_t ConvertVValue(uint32_t RawReading)
     i = (((float)RawReading))*100/4095;
     i = i*(float)3.29;					//ref voltage value
     i = i*(float)(470+16)/(float)16; //resistor divider R1+R2/R1
-    i *= (10.5/10.0)/10;					//coefficient due to tolerances
+    //i *= (10.5/10.0)/10;					//coefficient due to tolerances, //without adc internal calibration
+    i *= (10.0/10.0)/10;					//coefficient due to tolerances, //witht adc internal calibration
     return (uint32_t) i;			//result in 100mV
 }
 
@@ -1199,9 +1285,14 @@ uint32_t ConvertIValue(uint32_t RawReading)
 //    i = (((float)RawReading));
 //    i *= (43/87.0)*10;			//43 is 430mA current, 87 is ADC value
 #if HW_VER > 01
+//without adc internal calibration
     //from test, 2,6A over ADC reading
-    i = ((2650/654)*(float)RawReading);
-    i = i + 50.1;
+//    i = ((2650/654)*(float)RawReading);
+//    i = i + 50.1;
+//with ADC internal calibration
+    i = (double)(3824)*(double)RawReading;
+    i = i/1000;
+    i = i + 25;
 #else
     //from XLS trendline
     i = ((10000/2510)*(float)RawReading);
@@ -1376,7 +1467,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 7;
+  hadc1.Init.NbrOfConversion = 8;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -1451,6 +1542,15 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = ADC_REGULAR_RANK_7;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_VREFINT;
+  sConfig.Rank = ADC_REGULAR_RANK_8;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -1745,6 +1845,53 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 				DeleteStatistics2FLASH();
 				Flag_ShowStats = 4;
 			}
+			if (RxBuffer[start] == 'p' || RxBuffer[start] == 'P')						//show calibration data
+			{
+				Flag_ShowStats = 62;
+			}
+			if (RxBuffer[start] == 'l' || RxBuffer[start] == 'L')						//save calibration data
+			{
+				StoreCalData2FLASH();
+				Flag_ShowStats = 62;
+			}
+			if (RxBuffer[start] == 'k' || RxBuffer[start] == 'K')						//save calibration data
+			{
+				Flag_ShowStats = 62;
+				for(int i = 0; i < sizeof(CalibrationValues); i++)
+				{
+					((uint8_t *) &CalibrationValues)[i] = 0;
+				}
+			}
+			if (RxBuffer[start] == '0')													//calibrate inverter "0" current
+			{
+				Flag_ShowStats = 62;
+				uint32_t temp;
+				temp = 	ConvertIValue(Adc1RawReadings.Inv_current);
+				if (temp < 500)
+				{
+					CalibrationValues.Inv_current_off = (int)temp;
+					sprintf(TxBuffer, "\r\nInverter current offset: %i\r\n",( int)temp);
+				}
+				else
+				{
+					sprintf(TxBuffer, "\r\nInverter Zero current too high: %i\r\n",( int)Adc1Measurements.Inv_current);
+				}
+			}
+			if (RxBuffer[start] == '1')													//calibrate PV "0" current
+			{
+				Flag_ShowStats = 62;
+				uint32_t temp;
+				temp = 	ConvertIValue(Adc1RawReadings.PV_current);
+				if (temp < 500)
+				{
+					CalibrationValues.PV_current_off = (int)temp;
+					sprintf(TxBuffer, "\r\nPV current offset: %i\r\n",( int)temp);
+				}
+				else
+				{
+					sprintf(TxBuffer, "\r\nPV Zero current too high: %i\r\n",( int)Adc1Measurements.PV_current);
+				}
+			}
 			if (RxBuffer[start] == 'h' || RxBuffer[start] == 'H' || RxBuffer[start] == '?')
 			{
 				Flag_ShowStats = 60;
@@ -1755,6 +1902,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 						"E - erase current stat values stored in flash, will be saved at top of the hour. FlashPageCounter will be preserved, historical data preserved\r\n"
 						"D - Delete all stat data saved in flash, current and historical, instantly, !irreversible!\r\n"
 						"W - show Watt-Hours stat\r\n"
+						"0 - calibrate 'zero' current level for Inverter\r\n"
+						"1 - calibrate 'zero' current level for PV\r\n"
+						"P - show calibration values\r\n"
+						"K - clear calibration values (not saved)\r\n"
+						"L - save calibration values\r\n"
 						"\r\n"
 						);
 			}
@@ -1763,6 +1915,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			// buffer overflow error:
 //			sprintf(TxBuffer, "NAK RX BUFFER OVERFLOW ERROR %d\r\n", (len - RX_BFR_SIZE));
 //			TxSize = strlen(TxBuffer);
+			if(HAL_UART_GetError(&huart1)) {	//clear RX errors if occured
+			        HAL_UART_DMAStop(&huart1);                          // STOP Uart
+			        MX_USART1_UART_Init();                              // INIT Uart
+			        HAL_UART_Receive_DMA(&huart1, RxBuffer, RX_BFR_SIZE);  // START Uart DMA
+			        __HAL_UART_CLEAR_IDLEFLAG(&huart1);                 // Clear Idle IT-Flag
+			        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);        // Enable Idle Interrupt
+			   }
 		}
 
 //		HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);						// send a response
@@ -1782,7 +1941,11 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
 void InverterOn_batteryAsBackup(void)
 {
-	StatCurrentWs.Time_DuskTime = 0;		//clear "after dusk timer" - it's day
+	if (StatCurrentWh.DayDuration_current > 900)	//15 minutes in the day/after dawn
+	{
+		StatCurrentWs.Time_DuskTime = 0;		//clear "after dusk timer" - it's day
+		StatCountFlagsWs.ChgStatSaved = 0;		//enable saving daytime stats at dusk
+	}
 					//charge battery slightly?
 					if (((Adc1Measurements.Batt_voltage) < (BATT_MIN_VOLTAGE+VoltHysteresisDsChg))  &&
 							((Adc1Measurements.Batt_voltage) > BATT_CRITICAL_MIN_VOLTAGE) &&
@@ -1871,8 +2034,9 @@ void DischargeProcedure(void)
 	StatCountFlagsWs.Time_BattRecharge=0;	//you cant recharge during night, reset procedure
 	StatCountFlagsWs.Time_NightTime=1;	//its nighttime, enable to count nightime in 1Sectimer
 	StatCountFlagsWs.Time_DuskTime=1;	//its nightitme, enable flag to count time passed from recent dusk;
-	if (StatCurrentWs.Time_DuskTime == 900)	//15 minutes in the night/after dusk store Chg_Ah_last
+	if (StatCurrentWs.Time_DuskTime > 900 && !StatCountFlagsWs.ChgStatSaved)	//15 minutes in the night/after dusk store Chg_Ah_last
 	{
+		StatCountFlagsWs.ChgStatSaved = 1;			//block saving daytime stats at dusk more than once
 		StatCurrentWh.Chg_Ah_3 = StatCurrentWh.Chg_Ah_2;
 		StatCurrentWh.Chg_Ah_2 = StatCurrentWh.Chg_Ah_1;
 		StatCurrentWh.Chg_Ah_1 = StatCurrentWh.Chg_Ah_last;
@@ -1880,6 +2044,7 @@ void DischargeProcedure(void)
 		StatCurrentWh.DayDuration_3 = StatCurrentWh.DayDuration_2;
 		StatCurrentWh.DayDuration_2 = StatCurrentWh.DayDuration_1;
 		StatCurrentWh.DayDuration_1 = StatCurrentWh.DayDuration_current;
+		StatCurrentWh.DayDuration_current = 0;
 	}
 	//batt OK to discharge?
 	if (Adc1Measurements.Batt_voltage > (BATT_MIN_VOLTAGE-VoltHysteresisDsChg))
@@ -1987,7 +2152,7 @@ void PrintFlashStats2TxBuffer(void)
 	    	    		"MaxInvCurrent %u, MaxPVCurrent %u, "
 						"MaxInvCurrentCntr %u; MaxPVCurrentCntr %u, "
 	    	    		"MaxBatVolt %u, MinBatVolt %u, "
-						"MaxBatVoltageCntr %u, MinBatVoltageCntr %u"
+						"MaxBatVoltageCntr %u, MinBatVoltageCntr %u, "
 	    	    		"InvOvcCntr %u, InvExtRstCnt %u, "
 	    	    		"ChmAhLastF %u, DchmAhLastF %u, "
 	    	    		"DschVlastF %u, ChVlastF %u, "
@@ -2041,6 +2206,22 @@ void ShowWhStats(void)
 	,(unsigned int)StatCurrentWh.DayDuration_2, (unsigned int)StatCurrentWh.DayDuration_3
     );
 }
+
+void PrintfCalData(void)
+{
+	sprintf(TxBuffer, "Cal Data: Indicator %u:   "
+	        		"Inv_I_offsetmA %u; PV_I_offsetmA %u; "
+	        		"PVV_off %u; BattV_off %u, "
+	        		"NTC_PCB_off %u; NTC_INV_off %u, "
+	    			"NTC_Batt_off %u, Vref_off %u "
+	        		"\r\n"
+	        ,(int )CalibrationValues.Indicator
+	    	,(int )CalibrationValues.Inv_current_off, (int )CalibrationValues.PV_current_off
+	    	,(int )CalibrationValues.PV_voltage, (int )CalibrationValues.Batt_voltage
+	    	,(int )CalibrationValues.NTC1_PCB, (int )CalibrationValues.NTC2_Inverter_mos
+	    	,(int )CalibrationValues.NTC3_Battery_mos, (int )CalibrationValues.VrefInt
+	        );
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -2058,6 +2239,7 @@ void StartDefaultTask(void *argument)
 	InverterMOS_ON();
 	HAL_GPIO_WritePin(MEAS_PWR_GPIO_Port, MEAS_PWR_Pin, 0);		//turn ON power for op amp and other stuff
 	RestoreStatisticsFromFLASH();
+	RestoreCalValuesFromFLASH();
 	HAL_UART_MspInit(&huart1);
 	__HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
 	HAL_UART_Receive_DMA(&huart1, RxBuffer, RX_BFR_SIZE);
@@ -2065,6 +2247,8 @@ void StartDefaultTask(void *argument)
 #if HW_VER > 01
 	BackupPowerON();
 #endif
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	osDelay(50);
 	if (HAL_ADC_Start_DMA(&hadc1, &Adc1RawReadings.Inv_current , sizeof(Adc1RawReadings)/sizeof(uint32_t)) != HAL_OK) return 0;
 
 	HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, 1);
@@ -2094,6 +2278,10 @@ void StartDefaultTask(void *argument)
 	HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 0);
 	HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, 0);
     PrintFlashStats2TxBuffer();
+    TxSize = strlen(TxBuffer);
+    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
+	osDelay(5);
+    PrintfCalData();
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
     osTimerStart(myTimer01Handle, 100);		//start timer
@@ -2163,6 +2351,11 @@ void StartDefaultTask(void *argument)
 		,(unsigned int)FlagExt_I
 		);
 	}
+    else if (Flag_ShowStats == 62)	//show calibration data
+    {
+    	PrintfCalData();
+    	if (Flag_ShowStats) Flag_ShowStats--;
+    }
     else if (Flag_ShowStats == 60)		//show help
     {
     	if (Flag_ShowStats) Flag_ShowStats--;
@@ -2201,7 +2394,7 @@ void StartDefaultTask(void *argument)
 					Adc1Measurements.PV_voltage > PV_OCV_VOLGATE)
 			{//yes, its day
 				InverterOn_batteryAsBackup();
-				StatCurrentWh.DayDuration_current++;
+				StatCountFlagsWs.Time_Daytime=1;		//enable to count daytime
 			}//end of its day
     		else
     		{//no, its night
@@ -2223,7 +2416,7 @@ void StartDefaultTask(void *argument)
 			//is it a day?
 			if (Adc1Measurements.PV_current > PV_CURRENT_MIN || Adc1Measurements.PV_voltage > PV_OCV_VOLGATE)
 			{//yes, its day
-				StatCurrentWh.DayDuration_current++;
+				StatCountFlagsWs.Time_Daytime=1;		//enable to count daytime
 				//is batt OK to charge
 				if (Adc1Measurements.Batt_voltage < (BATT_MAX_VOLTAGE+VoltHysteresisChg)  &&
 						Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
@@ -2329,8 +2522,15 @@ void Callback01(void *argument)
 #ifdef DEBUG_EN
 		HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 #endif
-			Adc1Measurements.Inv_current = ConvertIValue(Adc1RawReadings.Inv_current);
-			Adc1Measurements.PV_current = ConvertIValue(Adc1RawReadings.PV_current) ;
+		uint32_t temp;
+		//Adc1Measurements.Inv_current = ConvertIValue(Adc1RawReadings.Inv_current);
+		temp = 	ConvertIValue(Adc1RawReadings.Inv_current);
+		if ( temp > CalibrationValues.Inv_current_off) Adc1Measurements.Inv_current = temp-CalibrationValues.Inv_current_off;
+		else Adc1Measurements.Inv_current = 0;
+		//Adc1Measurements.PV_current = ConvertIValue(Adc1RawReadings.PV_current) ;
+		temp = 	ConvertIValue(Adc1RawReadings.PV_current);
+		if (temp > CalibrationValues.PV_current_off) Adc1Measurements.PV_current = temp-CalibrationValues.PV_current_off;
+		else Adc1Measurements.PV_current = 0;
 			Adc1Measurements.PV_voltage = ConvertVValue(Adc1RawReadings.PV_voltage) ;
 			Adc1Measurements.Batt_voltage = ConvertVValue(Adc1RawReadings.Batt_voltage) ;
 			Adc1Measurements.NTC1_PCB = ConvertNTCvalue(Adc1RawReadings.NTC1_PCB) ;
