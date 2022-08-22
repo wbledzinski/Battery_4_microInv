@@ -45,7 +45,7 @@
 //#define DEBUG_EN		1	//comment to get production functionality
 //#define TESTING_VALUES	1	//comment to get production values
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -55,16 +55,16 @@
 #define TX_BFR_SIZE 1023		//uart 1
 #define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		80	//Mosfet max operating temperature *C
-#define PV_CURRENT_MIN		120	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
-#define PV_CURRENT_DAYLIGHT	120	//in 0.001A, min PV curent to assume that it is daylight - for day time calculation only
-#define INV_CURRENT_MIN		120	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually same as PV_CURRENT_MIN
+#define PV_CURRENT_MIN		250	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
+#define PV_CURRENT_DAYLIGHT	250	//in 0.001A, min PV curent to assume that it is daylight - for day time calculation only
+#define INV_CURRENT_MIN		250	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually same as PV_CURRENT_MIN
 #define INV_CURRENT_MAX		12500	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
 #define INV_CURR_SC			18000	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
-#define PV_OCV_VOLGATE		440	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
+#define PV_OCV_VOLGATE		430	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
 #define BATT_CRITICAL_MIN_VOLTAGE	240	//in 0.1V, min limit for charging
-#define BATT_MIN_VOLTAGE	346	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
+#define BATT_MIN_VOLTAGE	349	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
 #define BATT_MAX_VOLTAGE	401	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
-#define BATT_VOLTAGE_MAXHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
+#define BATT_VOLTAGE_MAXHYSTERESIS	20	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
 #define BATT_VOLTAGE_MINHYSTERESIS	22	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
 #define SECONDS_HOUR		3600	//to calculate Watt-hours from Watt-seconds
 #define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
@@ -327,221 +327,160 @@ void ExtOut_InvResetStop(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void DelayedOn_Wait(void)
+{
+	//is batt OK to charge? (and discharge as well)
+	if ((Adc1Measurements.Batt_voltage) < (BATT_MAX_VOLTAGE+VoltHysteresisChg)
+			&& Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
+	{//yes, ok to charge
+		InverterMOS_OFF();	//INV blocked, battery to power controller, if some PV still is (at dusk), it will charge BATT
+		BatteryMOS_ON();
+	}
+	else
+	{//not ok to charge battery
+#if HW_VER > 01		//charging/discharging blocked, PV might go only to INV
+		BatteryMOS_OFF();
+		InverterMOS_ON();
+#else
+		InverterMOS_OFF();	//INV blocked, battery to power controller, if some PV still is it will charge BATT (no other choice in HW01)
+		BatteryMOS_ON();
+#endif
+	}
+}
+
+void DelayedOn_On(void)
+{
+	InverterMOS_ON();
+	BatteryMOS_ON();
+}
 /*function switches on inverter mosfet, according to actual config in an instant or with delay*/
 void DelayedInvMosOn(void)
 {
 	switch (ConfigReg)
 	{
 	case CONFIG_MAINS_0DELAY:
-		InverterMOS_ON();
-		BatteryMOS_ON();
+		DelayedOn_On();
 		break;
 	case CONFIG_MAINS_1DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME1)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_MAINS_2DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME2)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-				BatteryMOS_OFF();
-				InverterMOS_ON();
-#else
-				InverterMOS_OFF();
-				BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_MAINS_3DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME3)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_MAINS_4DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME4)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_MAINS_5DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME5)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_MAINS_6DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME6)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
-		break;
 	case CONFIG_BATT_0DELAY:
-		InverterMOS_ON();
-		BatteryMOS_ON();
+		DelayedOn_On();
 		break;
 	case CONFIG_BATT_1DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME1)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_BATT_2DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME2)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_BATT_3DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME3)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_BATT_4DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME4)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_BATT_5DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME5)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	case CONFIG_BATT_6DELAY:
 		if (StatCurrentWs.Time_DuskTime > DUSK_TIME6)
 		{
-			InverterMOS_ON();
-			BatteryMOS_ON();
+			DelayedOn_On();
 		}
 		else
 		{
-#if HW_VER > 01
-			BatteryMOS_OFF();
-			InverterMOS_ON();
-#else
-			InverterMOS_OFF();
-			BatteryMOS_ON();
-#endif
+			DelayedOn_Wait();
 		}
 		break;
 	default:
@@ -1192,7 +1131,7 @@ void ExtOut_InvResetStart(void)
 	  GPIO_InitTypeDef GPIO_InitStruct = {0};
 	  GPIO_InitStruct.Pin = EXT_I_Pin;
 	  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//prevent excessive voltage on EXT_I byt pulldown
+	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//prevent excessive voltage on EXT_I by pulldown
 	  HAL_GPIO_Init(EXT_I_GPIO_Port, &GPIO_InitStruct);
 }
 
@@ -1205,8 +1144,9 @@ void ExtOut_InvResetStop(void)
 	  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 #if HW_VER > 01
 	  GPIO_InitStruct.Pull = GPIO_NOPULL;			//disable pulldown
+	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//apply pulldown - in humid environment it oftyen it sets this input without real signal coming in. for testing purposes
 #else
-	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//prevent excessive voltage on EXT_I byt pulldown
+	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//prevent excessive voltage on EXT_I by pulldown
 #endif
 	  HAL_GPIO_Init(EXT_I_GPIO_Port, &GPIO_InitStruct);
 }
@@ -1849,6 +1789,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			{
 				Flag_ShowStats = 62;
 			}
+			if (RxBuffer[start] == 'o' || RxBuffer[start] == 'O')						//read calibration data from flash
+			{
+				Flag_ShowStats = 62;
+				RestoreCalValuesFromFLASH();
+			}
 			if (RxBuffer[start] == 'l' || RxBuffer[start] == 'L')						//save calibration data
 			{
 				StoreCalData2FLASH();
@@ -1905,6 +1850,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 						"0 - calibrate 'zero' current level for Inverter\r\n"
 						"1 - calibrate 'zero' current level for PV\r\n"
 						"P - show calibration values\r\n"
+						"O - read calibration values from Flash\r\n"
 						"K - clear calibration values (not saved)\r\n"
 						"L - save calibration values\r\n"
 						"\r\n"
@@ -1947,7 +1893,7 @@ void InverterOn_batteryAsBackup(void)
 		StatCountFlagsWs.ChgStatSaved = 0;		//enable saving daytime stats at dusk
 	}
 					//charge battery slightly?
-					if (((Adc1Measurements.Batt_voltage) < (BATT_MIN_VOLTAGE+VoltHysteresisDsChg))  &&
+					if (((Adc1Measurements.Batt_voltage) < (BATT_MIN_VOLTAGE-BATT_VOLTAGE_MINHYSTERESIS+VoltHysteresisDsChg))  &&
 							((Adc1Measurements.Batt_voltage) > BATT_CRITICAL_MIN_VOLTAGE) &&
 							StatCurrentWs.Ws_BattRecharge < TOUT_BATTRECHARGE)	//prevent too long recharging (be carefoul, cleared every hour)
 					{//yes, re-charge battery
@@ -2071,11 +2017,6 @@ void DischargeProcedure(void)
 	}
 	else
 	{//its night and not OK to discharge (battery fully discharged)
-#if HW_VER > 01
-		BatteryMOS_OFF();		//disconnect battery from load (HW02>)and..
-#else
-		InverterMOS_OFF();		//disconnect load (HW 01)and..
-#endif
 		VoltHysteresisDsChg = 0;
 		VoltHysteresisChg = 0;		//most likely will be cleared by uP reset anyway
 		StatCurrentWh.Dschg_Ah_lastFull_3 = StatCurrentWh.Dschg_Ah_lastFull_2;
@@ -2098,6 +2039,12 @@ void DischargeProcedure(void)
 			StatCountFlagsWs.Chg_cycle_count = 0;	//most likely will be cleared by system reset
 			StatCurrentWh.Chg_Ah_current=0;	//clear charge Ah, likely ill be cleared by reset
 		}
+
+//#if HW_VER > 01
+//		BatteryMOS_OFF();		//disconnect battery from load (HW02>), battery sctually can be left ON - sometimes on cloudy evenings there is small current left in PV. below 100mA it can,t be consumed by inverter anyway.
+//#else
+		InverterMOS_OFF();		//disconnect load (HW 01)
+//#endif
 		if (StatCountFlagsWs.Dschg_cycle_count && StatCountFlagsWs.Dschg_cycle_c2)
 		{//if stats updated, wait until it's saved
 			if (Uptime.minutes == 0	//and wait for statistics to be saved and then...
@@ -2280,7 +2227,7 @@ void StartDefaultTask(void *argument)
     PrintFlashStats2TxBuffer();
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
-	osDelay(5);
+	osDelay(20);
     PrintfCalData();
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
