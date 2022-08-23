@@ -39,7 +39,7 @@ main.c:2068:6:PrintConfig2TxBuffer	72	static
 main.c:2094:6:PrintFlashStats2TxBuffer	136	static
 main.c:2132:6:ShowWhStats	120	static
 main.c:2162:6:PrintfCalData	48	static
-main.c:2186:6:StartDefaultTask	264	static
-main.c:2441:6:Callback01	48	static
-main.c:2511:6:HAL_TIM_PeriodElapsedCallback	0	static
-main.c:2528:6:Error_Handler	0	static,ignoring_inline_asm
+main.c:2186:6:StartDefaultTask	256	static
+main.c:2442:6:Callback01	48	static
+main.c:2512:6:HAL_TIM_PeriodElapsedCallback	0	static
+main.c:2529:6:Error_Handler	0	static,ignoring_inline_asm

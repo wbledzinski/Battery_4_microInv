@@ -45,7 +45,7 @@
 //#define DEBUG_EN		1	//comment to get production functionality
 //#define TESTING_VALUES	1	//comment to get production values
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -64,10 +64,10 @@
 #define INV_CURR_SC			18000	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
 #define PV_OCV_VOLGATE		430	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
 #define BATT_CRITICAL_MIN_VOLTAGE	240	//in 0.1V, min limit for charging
-#define BATT_MIN_VOLTAGE	349	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
+#define BATT_MIN_VOLTAGE	345	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
 #define BATT_MAX_VOLTAGE	401	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
 #define BATT_VOLTAGE_MAXHYSTERESIS	20	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
-#define BATT_VOLTAGE_MINHYSTERESIS	22	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
+#define BATT_VOLTAGE_MINHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
 #define SECONDS_HOUR		3600	//to calculate Watt-hours from Watt-seconds
 #define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
 #define LEDSTATUS_TIMER_MED			3		//4 seconds cycle
@@ -572,7 +572,7 @@ void ResetInverterNight(void)
 			StatCountFlagsWs.InvOutShorted = 1;
 		}
 #if HW_VER > 01
-		if (FlagExt_I == 1)
+		if (FlagExt_I == 1 && FlagInverterMOS)	//switch cycle power to inverter only if it should be working and EXTI present. Do not cycle power during delayed ON
 		{
 			TimeToResetInv = 1;
 			StatCurrentWh.InvExtResetCnt++;
@@ -2242,6 +2242,7 @@ void StartDefaultTask(void *argument)
     StatCountFlagsWs.Dschg_cycle_c2 = 1; 	//block saving dsch data before charging battery (in case of discharged battery during cloudy evenings with multiple possible controller restarts)
     StatCountFlagsWs.Dschg_cycle_count = 1;	//block saving dsch stats before even starting battery charge
     StatCountFlagsWs.ChgStatSaved = 1; 		//chg stats update only after actual charge; prevents any stats update during evening restarts
+    Adc1Measurements.Batt_voltage = 350;	//strange behavior when restarting at dusk with alkl measurements cleared
   /* Infinite loop */
   for(;;)
   {
@@ -2263,14 +2264,14 @@ void StartDefaultTask(void *argument)
         		"WsBattIn %u; "
         		"WsBattNoInv %u; Ws_BattOut %u, "
         		"WsBattRech %u; Ws_Inv %u, "
-    			"DuskTime %u, "
+    			"DuskTime %u, DayDuration_cur %u, "
     			"ChgmAs %u, DchgmAs %u, "
         		"\r\n"
         ,(unsigned int )StatCurrentWs.Time_NightTime, (unsigned int )StatCurrentWs.Time_NoBattery2Chg, (unsigned int )StatCurrentWs.Time_NoInv
     	,(unsigned int )StatCurrentWs.Ws_BattIn
         ,(unsigned int )StatCurrentWs.Ws_BattNoInv, (unsigned int )StatCurrentWs.Ws_BattOut
     	,(unsigned int )StatCurrentWs.Ws_BattRecharge, (unsigned int )StatCurrentWs.Ws_Inverter
-		,(unsigned int)StatCurrentWs.Time_DuskTime
+		,(unsigned int)StatCurrentWs.Time_DuskTime, (unsigned int)StatCurrentWh.DayDuration_current
 		,(unsigned int)StatCurrentWs.ChgAs, (unsigned int)StatCurrentWs.DschgAs
         );
     }
