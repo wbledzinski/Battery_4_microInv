@@ -155,7 +155,8 @@ __attribute__((__section__(".user_data"))) const char Cal_savedInFLASH[FLASH_PAG
 //flash writing works good even with strong optimization
 void __attribute__((optimize("O0"))) RestoreStatisticsFromFLASH();
 void __attribute__((optimize("O0"))) RestoreCalValuesFromFLASH();
-//int __attribute__((optimize("O0"))) StoreStatistics2FLASH();
+int __attribute__((optimize("O0"))) StoreStatistics2FLASH();
+int __attribute__((optimize("O0"))) StoreCalData2FLASH();
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -796,7 +797,7 @@ int StoreCalData2FLASH(void)
 	uint32_t temp, sofar=0, PageAddress=0;
 	FLASH_EraseInitTypeDef flash_conf;
 
-	osTimerStop(myTimer01Handle);
+	//osTimerStop(myTimer01Handle);
 	StatCurrentWh.FlashPageCounter++;
 	flash_conf.TypeErase = FLASH_TYPEERASE_PAGES;
 	flash_conf.NbPages = 1;
@@ -821,13 +822,13 @@ int StoreCalData2FLASH(void)
 		 else
 		 {
 		   /* Error occurred while writing data in Flash memory*/
-			 osTimerStart(myTimer01Handle, 100);
+			 //osTimerStart(myTimer01Handle, 100);
 			 return HAL_FLASH_GetError();
 		 }
 	}
 #endif
 	HAL_FLASH_Lock();
-	osTimerStart(myTimer01Handle, 100);
+	//osTimerStart(myTimer01Handle, 100);
 	return 0;
 }
 
@@ -881,7 +882,7 @@ int StoreStatistics2FLASH(void)
 	FLASH_EraseInitTypeDef flash_conf;
 
 #ifndef TESTING_VALUES
-	osTimerStop(myTimer01Handle);
+	//osTimerStop(myTimer01Handle);
 #endif
 	Stat_Flash = StatCurrentWh;
 	if (RecentPage_pointer < NO_FLASH_PAGES-1) RecentPage_pointer++;
@@ -913,7 +914,7 @@ int StoreStatistics2FLASH(void)
 		     {
 		       /* Error occurred while writing data in Flash memory*/
 #ifndef TESTING_VALUES
-		    	 osTimerStart(myTimer01Handle, 100);
+		    	 //osTimerStart(myTimer01Handle, 100);
 #endif
 		    	 return HAL_FLASH_GetError();
 		     }
@@ -921,7 +922,7 @@ int StoreStatistics2FLASH(void)
 #endif
 	HAL_FLASH_Lock();
 #ifndef TESTING_VALUES
-	osTimerStart(myTimer01Handle, 100);
+	//osTimerStart(myTimer01Handle, 100);
 #endif
 	return 0;
 }
