@@ -44,6 +44,12 @@
 /* USER CODE BEGIN PD */
 //#define DEBUG_EN		1	//comment to get production functionality
 //#define TESTING_VALUES	1	//comment to get production values
+#define PRINTF_DEBUG		1	//defined will compile printf for alghoritm debug
+#ifdef PRINTF_DEBUG
+# define DEBUG_PRINT(x) sprintf(TxBuffer+strlen(TxBuffer), x);
+#else
+# define DEBUG_PRINT(x) do {} while (0)
+#endif
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
 #define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
@@ -59,23 +65,25 @@
 								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
 								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
 #define PV_CURRENT_HYST		70	//in 0.001A, PV curent hysteresis, to prevent frequent change chg/dschg during dusk and dawn
-#define INV_CURRENT_MIN		250	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually slightly smaller than PV_CURRENT_MIN
+#define INV_CURRENT_MIN_DAY		200	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually slightly smaller than PV_CURRENT_MIN
 								//to prevent switchung battery on/off at daytime at dusk . difference should cover current measurement error for small currents between channels
+#define INV_CURRENT_MIN_NIGHT		250	//in 0.001A, min inverter current to assume that inv transfers energy to mains.
 #define INV_CURRENT_MAX		13500	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
 #define INV_CURR_SC			16500	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
 #define PV_OCV_VOLGATE		435	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
 #define PV_MIN_OP_VOLTAGE	330	//in 0.1V, minimal operational voltage for PV panel when working with inverter. prevents INV from overloading PV.
 #define BATT_CRITICAL_MIN_VOLTAGE	240	//in 0.1V, min limit for charging
 #define BATT_MIN_VOLTAGE	348	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
-#define BATT_MAX_VOLTAGE	401	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
-#define BATT_VOLTAGE_MAXHYSTERESIS	20	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
-#define BATT_VOLTAGE_MINHYSTERESIS	19	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
-#define SECONDS_HOUR		3600	//to calculate Watt-hours from Watt-seconds
+#define BATT_MAX_VOLTAGE	403	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
+#define BATT_VOLTAGE_MAXHYSTERESIS	18	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
+#define BATT_VOLTAGE_MINHYSTERESIS	17	//in 0.1V, to prevent frequent switching chg/dschg at min voltage/ 15 makes multiple discharges at dusk - confuses statistics; maybe longer nigh-timeout will help
+#define SECONDS_HOUR		(TICKS_ONEMINUTE+1)*(TICKS_ONEHOUR+1)	//to calculate Watt-hours from Watt-seconds
 #define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
 #define LEDSTATUS_TIMER_MED			3		//4 seconds cycle
 #define LEDSTATUS_TIMER_SHORT		1		//2 seconds cycle
 #define TIME2RESET_INV				2500	//30min/1800s, 42m/2500s; if INV not working for longer than ... seconds perform reset procedure
 #define TIME2OVLD_INV				35		//maximum time of overload,seconds, during battery discharge
+#define TIME_LOW_I_4NIGHT			1800	//30min/1800s, 42m/2500s; low PV current timeout to assume it's night
 #define TOUT_BATTRECHARGE			600		//600s/10m time limit for battery recharge
 #define DUSK_TIME1					60*60	//60 minutes	delayed INV ON after dusk. in seconds
 #define DUSK_TIME2					2*60*60	//2*60 minutes
@@ -86,36 +94,43 @@
 #else						//TESTING VALUES
 
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
-#define TICKS_ONEMINUTE	10	//counter ticks for one minute (default 59)
+#define TICKS_ONEMINUTE	22	//counter ticks for one minute (default 59)
 #define TICKS_ONEHOUR	2	//counter ticks for one hour (default 59)
-#define TICKS_ONEDAY	2	//counter ticks for one day (default 23)
+#define TICKS_ONEDAY	5	//counter ticks for one day (default 23)
 #define RX_BFR_SIZE 127		//uart 1
 #define TX_BFR_SIZE 1023		//uart 1
-#define NO_FLASH_PAGES	48	//number of flash pages for storing statistics to flash
-#define MOSFET_MAX_TEMP		30	//Mosfet max operating temperature *C
-#define PV_CURRENT_MIN		300	//in 0.001A, min PV curent to assume that it is daylight
-#define INV_CURRENT_MIN		300	//in 0.001A, min inverter current to assume that inv transfers energy to mains
-#define INV_CURRENT_MAX		13000	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
-#define INV_CURR_SC			18000	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
-#define PV_OCV_VOLGATE		230	//in 0.1V, OCV voltage for PV panel without load (minimal voltage for hot day)
-#define BATT_CRITICAL_MIN_VOLTAGE	90	//in 0.1V, min limit for charging
-#define BATT_MIN_VOLTAGE	120	//in 0.1V, consider min limit for discharging with - hysteresis
-#define BATT_MAX_VOLTAGE	225	//in 0.1V, consider max limit for charging with + hysteresis
-#define BATT_VOLTAGE_MAXHYSTERESIS	05	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
-#define BATT_VOLTAGE_MINHYSTERESIS	05	//in 0.1V, to prevent frequent switching chg/dschg at min voltage
-#define SECONDS_HOUR		1	//to calculate Watt-hours from Watt-seconds; to calculate hours from seconds
-#define LEDSTATUS_TIMER_LONG		3		//10 seconds cycle
-#define LEDSTATUS_TIMER_MED			2		//4 seconds cycle
+#define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
+#define MOSFET_MAX_TEMP		50	//Mosfet max operating temperature *C
+#define PV_CURRENT_MIN		320	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
+								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
+								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
+#define PV_CURRENT_HYST		70	//in 0.001A, PV curent hysteresis, to prevent frequent change chg/dschg during dusk and dawn
+#define INV_CURRENT_MIN_DAY		200	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually slightly smaller than PV_CURRENT_MIN
+								//to prevent switchung battery on/off at daytime at dusk . difference should cover current measurement error for small currents between channels
+#define INV_CURRENT_MIN_NIGHT		250	//in 0.001A, min inverter current to assume that inv transfers energy to mains.
+#define INV_CURRENT_MAX		1350	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
+#define INV_CURR_SC			1500	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
+#define PV_OCV_VOLGATE		435	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
+#define PV_MIN_OP_VOLTAGE	330	//in 0.1V, minimal operational voltage for PV panel when working with inverter. prevents INV from overloading PV.
+#define BATT_CRITICAL_MIN_VOLTAGE	15	//in 0.1V, min limit for charging
+#define BATT_MIN_VOLTAGE	348	//in 0.1V, consider min limit for discharging with "-hysteresisMIN"
+#define BATT_MAX_VOLTAGE	393	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
+#define BATT_VOLTAGE_MAXHYSTERESIS	18	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
+#define BATT_VOLTAGE_MINHYSTERESIS	17	//in 0.1V, to prevent frequent switching chg/dschg at min voltage/ 15 makes multiple discharges at dusk - confuses statistics; maybe longer nigh-timeout will help
+#define SECONDS_HOUR		(TICKS_ONEMINUTE+1)*(TICKS_ONEHOUR+1)	//to calculate Watt-hours from Watt-seconds
+#define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
+#define LEDSTATUS_TIMER_MED			3		//4 seconds cycle
 #define LEDSTATUS_TIMER_SHORT		1		//2 seconds cycle
-#define TIME2RESET_INV				20		//30sec, if INV not working for longer than ... seconds do reset procedure
-#define TIME2OVLD_INV				15		//10 seconds of overload, during battery discharge
-#define TOUT_BATTRECHARGE			10		//600s/10m time limit for battery recharge
-#define DUSK_TIME1					30		//30 minutes	delayed INV ON after dusk. in seconds
-#define DUSK_TIME2					2*30	//2*30 minutes
-#define DUSK_TIME3					3*30	//1,5h
-#define DUSK_TIME4					4*30	//2h
-#define DUSK_TIME5					5*30	//2,5h
-#define DUSK_TIME6					6*30	//3h
+#define TIME2RESET_INV				20	//30min/1800s, 42m/2500s; if INV not working for longer than ... seconds perform reset procedure
+#define TIME2OVLD_INV				15		//maximum time of overload,seconds, during battery discharge
+#define TIME_LOW_I_4NIGHT			18	//30min/1800s, 42m/2500s; low PV current timeout to assume it's night
+#define TOUT_BATTRECHARGE			6		//600s/10m time limit for battery recharge
+#define DUSK_TIME1					60	//60 minutes	delayed INV ON after dusk. in seconds
+#define DUSK_TIME2					2*60	//2*60 minutes
+#define DUSK_TIME3					3*60	//3h
+#define DUSK_TIME4					4*60	//4h
+#define DUSK_TIME5					5*60	//5h
+#define DUSK_TIME6					6*60	//6h
 #endif
 #define CONFIG_MAINS_0DELAY			0		//state-mashine steps
 #define CONFIG_MAINS_1DELAY			1
@@ -140,7 +155,7 @@ __attribute__((__section__(".user_data"))) const char Cal_savedInFLASH[FLASH_PAG
 //flash writing works good even with strong optimization
 void __attribute__((optimize("O0"))) RestoreStatisticsFromFLASH();
 void __attribute__((optimize("O0"))) RestoreCalValuesFromFLASH();
-void __attribute__((optimize("O0"))) StoreStatistics2FLASH();
+//int __attribute__((optimize("O0"))) StoreStatistics2FLASH();
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -185,12 +200,13 @@ uint32_t FlagBatteryMOS=0;		//flag indicating Mosfet status: ON 1 or OFF 0
 uint32_t FlagInverterMOS=0;		//flag indicating Mosfet status: ON 1 or OFF 0
 uint32_t FlagBackupMOS=0;		//flag indicating backup power mosfet status
 uint32_t FlagExt_I=0;			//flag showing External input (reset microinverter) reading
-uint32_t VoltHysteresisChg=0, VoltHysteresisDsChg=0; PVCurrentHysteresis=PV_CURRENT_HYST;
+uint32_t VoltHysteresisChg=0, VoltHysteresisDsChg=0;
+uint32_t PVCurrentHysteresis=PV_CURRENT_HYST;
 uint32_t LedStatus, LedStatusTimer;
 uint32_t Flag_StoreStatistics=0;
 uint32_t Flag_ShowStats=0;
 uint32_t FlagRunMainLoop=0;			//flag to synhronize main loop with software timer procedure
-uint32_t FlagResetInverter, TimeToResetInv=TIME2RESET_INV, BlankingTimeToResetInv, StateResetInv;		//variables for resetInv procedure
+uint32_t FlagResetInverter, TimeToResetInv=TIME2RESET_INV, BlankingTimeToResetInv=TIME2RESET_INV/3, StateResetInv;		//variables for resetInv procedure
 typedef struct
 {
 	uint32_t Inv_current;
@@ -205,10 +221,10 @@ typedef struct
 
 typedef struct		//should have even number of uint32_t due to 64bit word save flash function
 {
-	uint32_t FlashPageCounter;
-	uint32_t Wh_BattIn;				//1.variable count energy stored in battery, battery storage mode only
-	uint32_t Wh_BattNoInv;			//2.variable count energy stored in battery (should be INV), battery mains mode only
-	uint32_t Wh_Inverter;			//3.variable count energy transferred to inverter from PV
+	uint32_t FlashPageCounter;		//
+	uint32_t Wh_BattIn;				//variable count energy stored in battery, battery storage mode only
+	uint32_t Wh_BattNoInv;			//variable count energy stored in battery (should be INV), battery mains mode only
+	uint32_t Wh_Inverter;			//variable count energy transferred to inverter from PV
 	uint32_t Wh_BattOut;			//variable counts energy transferred to INV from battery (during discharge)
 	uint32_t Wh_BattRecharge;		//variable counts energy used to keep battery above minimal voltage
 	uint32_t Time_NoInv;			//variable counts time when INV doesn't consume energy from PV
@@ -226,12 +242,12 @@ typedef struct		//should have even number of uint32_t due to 64bit word save fla
 	uint32_t MaxInvCurrentCntr;		//counter, number of occurences, for long ones its time in seconds
 	uint32_t MaxPVCurrent;			//max recorded PV current
 	uint32_t MaxPVCurrentCntr;		//counter, number of occurences, for long ones its time in seconds
-	uint32_t MaxBatVoltage;			//18. max recorded battery voltage
+	uint32_t MaxBatVoltage;			//22. max recorded battery voltage
 	uint32_t MaxBatVoltageCntr;		//counter, number of occurences, for long ones its time in seconds
-	uint32_t MinBatVoltage;			//19.min recorded battery voltage
+	uint32_t MinBatVoltage;			//24.min recorded battery voltage
 	uint32_t MinBatVoltageCntr;		//counter, number of occurences, for long ones its time in seconds
-	uint32_t InvOvcCounter;			//20. counter, number of resets due to Inverter over current; during battery discharge
-	uint32_t InvExtResetCnt;		//21. counter, number of resets due to Ext reset signal
+	uint32_t InvOvcCounter;			//26. counter, number of resets due to Inverter over current; during battery discharge
+	uint32_t InvExtResetCnt;		//27. counter, number of resets due to Ext reset signal
 	uint32_t Dschg_Ah_lastFull;		//discharge mAh during end of last discharge, today
 	uint32_t Dschg_Ah_lastFull_1;		//discharge mAh during end of last discharge, yesterday
 	uint32_t Dschg_Ah_lastFull_2;		//discharge mAh during end of last discharge, yesterday
@@ -249,7 +265,11 @@ typedef struct		//should have even number of uint32_t due to 64bit word save fla
 	uint32_t DayDuration_1;			//yesterday day duration
 	uint32_t DayDuration_2;			//day before yesterday day duration
 	uint32_t DayDuration_3;			//2 days before yesterday day duration
-	//uint32_t nousedvar;		//add something here to make number of variables even
+	uint32_t Chg_Ah_tot_Mains;			//total charge mAh, mains mode
+	uint32_t Dschg_Ah_tot_Mains;			//46. total dscharge mAh, mains mode
+	uint32_t Chg_Ah_tot_Batt;			//total charge mAh, battery mode
+	uint32_t Dschg_Ah_tot_Batt;			//46. total dscharge mAh, battery mode
+//	uint32_t nousedvar;		//add something here to make number of variables even
 }_WhStatistics;
 
 _WhStatistics StatCurrentWh, Stat_Flash;
@@ -276,6 +296,7 @@ typedef struct
 	uint32_t DchgStatSaved;			//used only as a flag
 	uint32_t LowInvCurrent;			//used only as a flag
 	uint32_t EmptyBattStatsSaved;	//used only as a flag
+	uint32_t StatsUpdated_pwrOff;	//used only as a flag
 	uint32_t Time_DuskTime;			//time passed from dusk (not stored in statsFlash, just current night)
 	uint32_t ChgAs;					//charge ampere-seconds, in 0,1As
 	uint32_t DschgAs;				//discharge ampere-seconds, in 0,1As
@@ -506,9 +527,9 @@ void ResetInverterDay(void)
 	{
 	case 0:
 #if HW_VER > 01
-		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN && FlagExt_I == 0)
+		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY && FlagExt_I == 0)
 #else
-		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN )
+		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY )
 #endif
 		{
 			TimeToResetInv = TIME2RESET_INV;	//reset time to 30 minutes if inv is working
@@ -524,35 +545,41 @@ void ResetInverterDay(void)
 		if (TimeToResetInv)	TimeToResetInv--;
 		if (BlankingTimeToResetInv) BlankingTimeToResetInv--;
 		if (!TimeToResetInv) StateResetInv=1;	//start Inv Reset procedure
+		sprintf(TxBuffer+strlen(TxBuffer), "RID0,");
 		break;
 	case 1:	//30 minutes without inv currrent. set flag that procedure is ON,
 		FlagResetInverter = 1;	//procedure is on
-		BatteryMOS_OFF();		//switch off all loads causing OCV
+		BatteryMOS_OFF();		//switch off all loads causing OCV; INV OFF + BAT OFF -> causing OCV/increasing INV input voltage
 		InverterMOS_OFF();
 		StateResetInv = 2;
 		StatCurrentWh.InvResetCntr++;
 		ExtOut_InvResetStart();
+		sprintf(TxBuffer+strlen(TxBuffer), "RID1,");
 		break;
 	case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10:
 	case 11: case 12: case 13: case 14: case 15: case 16:
 		//wait 15 seconds
 		StateResetInv++;
+		sprintf(TxBuffer+strlen(TxBuffer), "RID2,");
 		break;
 	case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
 		//ON inverter MOS and wait 10 seconds
 		InverterMOS_ON();
 		StateResetInv++;
 		ExtOut_InvResetStop();
+		sprintf(TxBuffer+strlen(TxBuffer), "RID3,");
 		break;
 	case 27:	//now return to regular operation of controller
 		StateResetInv=0;
 		FlagResetInverter = 0;	//procedure is off
 		TimeToResetInv = TIME2RESET_INV;	//reset timer for 30 minutes
 		StatCountFlagsWs.LowInvCurrent = 0;	//reset "no current' flag
+		sprintf(TxBuffer+strlen(TxBuffer), "RID4,");
 		break;
 	default:
 		StateResetInv=0;
 		FlagResetInverter = 0;	//procedure is off
+		sprintf(TxBuffer+strlen(TxBuffer), "RID5,");
 		break;
 	}
 }
@@ -567,7 +594,7 @@ void ResetInverterNight(void)
 	switch (StateResetInv)
 	{
 	case 0:
-		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN &&
+		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_NIGHT &&
 		Adc1Measurements.Inv_current < INV_CURRENT_MAX)
 		{
 			TimeToResetInv = TIME2OVLD_INV;	//set overload timer for x seconds
@@ -579,12 +606,12 @@ void ResetInverterNight(void)
 			StatCountFlagsWs.InvOutShorted = 1;
 			StatCountFlagsWs.LowInvCurrent = 0;	//clear flag
 		}
-		else if (Adc1Measurements.Inv_current <= INV_CURRENT_MIN)
+		else if (Adc1Measurements.Inv_current <= INV_CURRENT_MIN_NIGHT)
 		{
 			if (!StatCountFlagsWs.LowInvCurrent)		//set timeout and flag only once
 			{
 				StatCountFlagsWs.LowInvCurrent = 1;		//set flag to prevent 'TimeToResetInv' write too early
-				TimeToResetInv = TIME2RESET_INV;
+				TimeToResetInv = TIME2RESET_INV/2;
 			}
 		}
 #if HW_VER > 01
@@ -595,15 +622,16 @@ void ResetInverterNight(void)
 			BlankingTimeToResetInv = TIME2RESET_INV/3;		//blanking time to prevent to frequent resets from EXTI
 		}
 #endif
-		if (TimeToResetInv)	TimeToResetInv--;
+		if (TimeToResetInv && FlagInverterMOS)	TimeToResetInv--;	//Do not cycle power during delayed ON
 		if (BlankingTimeToResetInv) BlankingTimeToResetInv--;
 		if (!TimeToResetInv) StateResetInv=1;	//start Inv Reset procedure
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN0,");
 		break;
 	case 1:	//10 sec ovld (or no current) inv currrent. set flag that procedure is ON,
 		FlagResetInverter = 1;	//procedure is on
 
 #if HW_VER > 01
-		BatteryMOS_OFF();			//disconnect load (HW02>)and..
+//		BatteryMOS_OFF();			//disconnect load (HW02>)and..; actually should I disconnect BAT MOS? it prevents SC on PV input only... and reduces some PV energy gain during normal operation.
 #endif
 		InverterMOS_OFF();			//disconnect load
 		StateResetInv = 17;			//for regular overload wait 10 seconds
@@ -611,12 +639,14 @@ void ResetInverterNight(void)
 		//StatCurrentWh.InvResetCntr++;
 		StatCurrentWh.InvOvcCounter++;
 		ExtOut_InvResetStart();
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN1,");
 		break;
 	case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10:
 	case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 18:
 	case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
 		//wait 25 seconds
 		StateResetInv++;
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN2,");
 		break;
 	case 27: case 28: case 29: case 30: case 31: case 32: case 33: case 34: case 35: case 36:
 		//ON inverter MOS and wait 10 seconds
@@ -625,6 +655,7 @@ void ResetInverterNight(void)
 		StateResetInv++;
 		ExtOut_InvResetStop();
 		if (Adc1Measurements.Inv_current > INV_CURR_SC) StateResetInv = 1;	//if SC occurs launch again reset procedure, instantly
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN3,");
 		break;
 	case 37:	//now return to regular operation of controller
 		StatCountFlagsWs.InvOutShorted = 0;	//reset flag 'shorted output'
@@ -632,11 +663,12 @@ void ResetInverterNight(void)
 		FlagResetInverter = 0;				//procedure is off
 		TimeToResetInv = TIME2RESET_INV;	//reset timer for 30 minutes
 		StatCountFlagsWs.LowInvCurrent = 0;	//reset "no current' flag
-
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN4,");
 		break;
 	default:
 		StateResetInv=0;
 		FlagResetInverter = 0;	//procedure is off
+		sprintf(TxBuffer+strlen(TxBuffer), "RIN5,");
 		break;
 	}
 }
@@ -759,7 +791,7 @@ int i;
 
 }
 
-void StoreCalData2FLASH(void)
+int StoreCalData2FLASH(void)
 {
 	uint32_t temp, sofar=0, PageAddress=0;
 	FLASH_EraseInitTypeDef flash_conf;
@@ -790,12 +822,13 @@ void StoreCalData2FLASH(void)
 		 {
 		   /* Error occurred while writing data in Flash memory*/
 			 osTimerStart(myTimer01Handle, 100);
-			 return HAL_FLASH_GetError ();
+			 return HAL_FLASH_GetError();
 		 }
 	}
 #endif
 	HAL_FLASH_Lock();
 	osTimerStart(myTimer01Handle, 100);
+	return 0;
 }
 
 /*Function restoring last saved statistics from FLASH memory */
@@ -842,12 +875,14 @@ void RestoreStatisticsFromFLASH(void)
 }
 
 /*Function storing last  statistics to FLASH memory */
-void StoreStatistics2FLASH(void)
+int StoreStatistics2FLASH(void)
 {
 	uint32_t temp, sofar=0, StartPageAddress=0;
 	FLASH_EraseInitTypeDef flash_conf;
 
+#ifndef TESTING_VALUES
 	osTimerStop(myTimer01Handle);
+#endif
 	Stat_Flash = StatCurrentWh;
 	if (RecentPage_pointer < NO_FLASH_PAGES-1) RecentPage_pointer++;
 	else RecentPage_pointer = 0;
@@ -877,13 +912,18 @@ void StoreStatistics2FLASH(void)
 		     else
 		     {
 		       /* Error occurred while writing data in Flash memory*/
+#ifndef TESTING_VALUES
 		    	 osTimerStart(myTimer01Handle, 100);
-		    	 return HAL_FLASH_GetError ();
+#endif
+		    	 return HAL_FLASH_GetError();
 		     }
 		   }
 #endif
 	HAL_FLASH_Lock();
+#ifndef TESTING_VALUES
 	osTimerStart(myTimer01Handle, 100);
+#endif
+	return 0;
 }
 /*Function storing last  statistics to FLASH memory */
 void DeleteStatistics2FLASH(void)
@@ -920,7 +960,6 @@ void DeleteStatistics2FLASH(void)
 /*function launched every second to calculate Watt-seconds for given machine state on basis of flags */
 void Calculate_WattSeconds(void)
 {
-#ifndef TESTING_VALUES
 	if (StatCountFlagsWs.Ws_BattIn)		//Watt-seconds when battery is charging
 	{
 		StatCountFlagsWs.Ws_BattIn = 0;
@@ -982,64 +1021,7 @@ void Calculate_WattSeconds(void)
 		StatCountFlagsWs.DschgAs = 0;
 		StatCurrentWs.DschgAs += (Adc1Measurements.Inv_current);
 	}
-#else		//calculate really big numbers to overload printf
-	if (StatCountFlagsWs.Ws_BattIn)		//Watt-seconds when battery is charging
-	{
-		StatCountFlagsWs.Ws_BattIn = 0;
-		StatCurrentWs.Ws_BattIn += (Adc1Measurements.Batt_voltage*Adc1Measurements.PV_current);
-	}
-	if (StatCountFlagsWs.Ws_BattNoInv)		//Watt-seconds when battery is charging but energy should go into mains (but cant)
-	{
-		StatCountFlagsWs.Ws_BattNoInv = 0;
-		StatCurrentWs.Ws_BattNoInv += (Adc1Measurements.Batt_voltage*Adc1Measurements.PV_current);
-		//StatCurrentWs.Time_NoInv++;	//double count
-	}
-	if (StatCountFlagsWs.Ws_Inverter)		//Watt-seconds for inverter
-	{
-		StatCountFlagsWs.Ws_Inverter = 0;
-		StatCurrentWs.Ws_Inverter += (Adc1Measurements.PV_voltage*Adc1Measurements.Inv_current);
-	}
-	if (StatCountFlagsWs.Ws_BattOut)		//Watt-seconds when battery is discharging
-	{
-		StatCountFlagsWs.Ws_BattOut = 0;
-		StatCurrentWs.Ws_BattOut += (Adc1Measurements.Batt_voltage*Adc1Measurements.Inv_current);
-	}
-	if (StatCountFlagsWs.Ws_BattRecharge)		//Watt-seconds when battery is recharging
-	{
-		StatCountFlagsWs.Ws_BattRecharge = 0;
-		StatCurrentWs.Ws_BattRecharge += (Adc1Measurements.Batt_voltage*Adc1Measurements.PV_current);
-	}
-	if (StatCountFlagsWs.Time_NightTime)		//darkness time
-	{
-		StatCountFlagsWs.Time_NightTime = 0;
-		StatCurrentWs.Time_NightTime+=1000;
-	}
-	if (StatCountFlagsWs.Time_NoBattery2Chg)		//time when battery is not ready to be charged
-	{
-		StatCountFlagsWs.Time_NoBattery2Chg = 0;
-		StatCurrentWs.Time_NoBattery2Chg+=1000;
-	}
-	if (StatCountFlagsWs.Time_NoInv)		//time when INV is not working
-	{
-		StatCountFlagsWs.Time_NoInv = 0;
-		StatCurrentWs.Time_NoInv+=1000;
-	}
-	if (StatCountFlagsWs.Time_DuskTime)		//time after dusk
-	{
-		StatCountFlagsWs.Time_DuskTime = 0;
-		StatCurrentWs.Time_DuskTime++;
-	}
-	if (StatCountFlagsWs.ChgAs)		//count mAs
-	{
-		StatCountFlagsWs.ChgAs = 0;
-		StatCurrentWs.ChgAs += (Adc1Measurements.PV_current);
-	}
-	if (StatCountFlagsWs.DschgAs)		//count mAs
-	{
-		StatCountFlagsWs.DschgAs = 0;
-		StatCurrentWs.DschgAs += (Adc1Measurements.PV_current)
-	}
-#endif
+
 	if (Adc1Measurements.NTC2_Inverter_mos >= StatCurrentWh.MaxTempInvMos)
 	{
 		StatCurrentWh.MaxTempInvMos = Adc1Measurements.NTC2_Inverter_mos;
@@ -1090,8 +1072,16 @@ void Calculate_WattHours(void)
 	StatCurrentWh.Wh_BattOut+=StatCurrentWs.Ws_BattOut/SECONDS_HOUR;
 	StatCurrentWh.Wh_BattRecharge+=StatCurrentWs.Ws_BattRecharge/SECONDS_HOUR;
 	StatCurrentWh.Chg_Ah_current+=StatCurrentWs.ChgAs/SECONDS_HOUR;
+	if (ConfigReg < CONFIG_BATT_0DELAY)	StatCurrentWh.Chg_Ah_tot_Mains+=StatCurrentWs.ChgAs/SECONDS_HOUR;
+	else if (ConfigReg > CONFIG_MAINS_6DELAY && ConfigReg < CONFIG_MAINS_NOBATTDSCHG) StatCurrentWh.Chg_Ah_tot_Batt+=StatCurrentWs.ChgAs/SECONDS_HOUR;
+	else if (ConfigReg == CONFIG_MAINS_NOBATTDSCHG) StatCurrentWh.Chg_Ah_tot_Batt+=StatCurrentWs.ChgAs/SECONDS_HOUR;
+	else if (ConfigReg == 0x0f) StatCurrentWh.Chg_Ah_tot_Batt+=StatCurrentWs.ChgAs/SECONDS_HOUR;
 	//StatCurrentWh.Chg_Ah_current=StatCurrentWh.Chg_Ah_current/1000;	//because current is stored in 0,001A
 	StatCurrentWh.Dschg_Ah_current+=StatCurrentWs.DschgAs/SECONDS_HOUR;
+	if (ConfigReg < CONFIG_BATT_0DELAY) StatCurrentWh.Dschg_Ah_tot_Mains+=StatCurrentWs.DschgAs/SECONDS_HOUR;
+	else if (ConfigReg > CONFIG_MAINS_6DELAY && ConfigReg < CONFIG_MAINS_NOBATTDSCHG)  StatCurrentWh.Dschg_Ah_tot_Batt+=StatCurrentWs.DschgAs/SECONDS_HOUR;
+	else if (ConfigReg == CONFIG_MAINS_NOBATTDSCHG) StatCurrentWh.Dschg_Ah_tot_Batt+=StatCurrentWs.DschgAs/SECONDS_HOUR;
+	else if (ConfigReg == 0x0f) StatCurrentWh.Dschg_Ah_tot_Batt+=StatCurrentWs.DschgAs/SECONDS_HOUR;
 	//StatCurrentWh.Dschg_Ah_current=StatCurrentWh.Dschg_Ah_current/1000;	//because current is stored in 0,001A
 	StatCurrentWh.Time_NightTime+=StatCurrentWs.Time_NightTime;
 	StatCurrentWh.Time_NoBattery2Chg+=StatCurrentWs.Time_NoBattery2Chg;
@@ -1167,7 +1157,7 @@ void ExtOut_InvResetStop(void)
 	  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 #if HW_VER > 01
 	  GPIO_InitStruct.Pull = GPIO_NOPULL;			//disable pulldown
-	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//apply pulldown - in humid environment it oftyen it sets this input without real signal coming in. for testing purposes
+	  //GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//apply pulldown - in humid environment it oftyen it sets this input without real signal coming in. for testing purposes
 #else
 	  GPIO_InitStruct.Pull = GPIO_PULLDOWN;			//prevent excessive voltage on EXT_I by pulldown
 #endif
@@ -1763,7 +1753,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(__HAL_UART_GET_FLAG(huart, UART_FLAG_IDLE)) {									// Check if it is an "Idle Interrupt"
 		__HAL_UART_CLEAR_IDLEFLAG(&huart1);												// clear the interrupt
 		RxCounter++;																	// increment the Rx Counter
-		uint8_t TxSize = 0;
+//		uint8_t TxSize = 0;
 		uint16_t start = RxBfrPos;														// Rx bytes start position (=last buffer position)
 		RxBfrPos = RX_BFR_SIZE - (uint16_t)huart->hdmarx->Instance->CNDTR;				// determine actual buffer position
 		uint16_t len = RX_BFR_SIZE;														// init len with max. size
@@ -1830,6 +1820,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 					((uint8_t *) &CalibrationValues)[i] = 0;
 				}
 			}
+			if (RxBuffer[start] == 'B' || RxBuffer[start] == 'b')						//clear BlankTime
+			{
+				BlankingTimeToResetInv = 0;
+			}
+			if (RxBuffer[start] == 't' || RxBuffer[start] == 'T')						//clear time2resetInv
+			{
+				TimeToResetInv = 0;
+			}
 			if (RxBuffer[start] == '0')													//calibrate inverter "0" current
 			{
 				Flag_ShowStats = 62;
@@ -1876,6 +1874,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 						"O - read calibration values from Flash\r\n"
 						"K - clear calibration values (not saved)\r\n"
 						"L - save calibration values\r\n"
+						"B - clear BlankingTimeToResetInv\r\n"
+						"T - clear Time2ResetInv\r\n"
 						"\r\n"
 						);
 			}
@@ -1912,6 +1912,7 @@ void InverterOn_batteryAsBackup(void)
 {
 	if (StatCurrentWh.DayDuration_current > 900)	//15 minutes in the day/after dawn
 	{
+		DEBUG_PRINT ("I1,");
 		StatCurrentWs.Time_DuskTime = 0;		//clear "after dusk timer" - it's day
 		StatCountFlagsWs.ChgStatSaved = 0;		//enable saving daytime stats at dusk
 #if HW_VER > 01
@@ -1919,11 +1920,13 @@ void InverterOn_batteryAsBackup(void)
 #endif
 	}
 	StatCountFlagsWs.EmptyBattStatsSaved = 0;	//clear flag to enable saving stats at the end of discharge at night
+	StatCountFlagsWs.StatsUpdated_pwrOff = 0;
 					//charge battery slightly?
 					if (((Adc1Measurements.Batt_voltage) < (BATT_MIN_VOLTAGE-BATT_VOLTAGE_MINHYSTERESIS+VoltHysteresisDsChg))  &&
 							((Adc1Measurements.Batt_voltage) > BATT_CRITICAL_MIN_VOLTAGE) &&
 							StatCurrentWs.Ws_BattRecharge < TOUT_BATTRECHARGE)	//prevent too long recharging (be carefoul, cleared every hour)
 					{//yes, re-charge battery
+						DEBUG_PRINT ("I2,");
 						BatteryMOS_ON();
 						VoltHysteresisDsChg = BATT_VOLTAGE_MINHYSTERESIS;	//hysteresis for min operation batery voltage
 						InverterMOS_OFF();	//tbd
@@ -1933,6 +1936,7 @@ void InverterOn_batteryAsBackup(void)
 					}
 					else
 					{//no need to recharge battery, check what else you can do
+						DEBUG_PRINT ("I3,");
 						//prevent BatMosOff when no inv operation; MosOff only once when exiting from batt recharge
 						if (StatCountFlagsWs.Time_BattRecharge) BatteryMOS_OFF();
 						VoltHysteresisDsChg = 0;
@@ -1941,17 +1945,20 @@ void InverterOn_batteryAsBackup(void)
 						//switch INV ON only if not battery recharge AND Inverter reset procedure isnt in progress
 						if (!FlagResetInverter) InverterMOS_ON();
 						//is inverter working?
-						if (Adc1Measurements.Inv_current > INV_CURRENT_MIN)
+						if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY)
 						{//yes, inverter working
+							DEBUG_PRINT ("I4,");
 							StatCountFlagsWs.Ws_Inverter=1;	//inverter working, enable to count energy, in 1Sectimer
 							BatteryMOS_OFF();		//it's day, inv working-> switch off battery mos
 							StatCountFlagsWs.InvFault = 0;	//flag to clear invfault occurence
 						}
 						else
 						{//it's day, inv is not working
+							DEBUG_PRINT ("I5,");
 							//count once inverter fault condition
 							if (!StatCountFlagsWs.InvFault)
 								{
+								DEBUG_PRINT ("I6,");
 									StatCurrentWh.InvFaultCntr++;
 									StatCountFlagsWs.InvFault = 1;
 								}
@@ -1959,10 +1966,12 @@ void InverterOn_batteryAsBackup(void)
 							ResetInverterDay();	//try reset inv
 							if (!FlagResetInverter ) 			//if INV Reset procedure is not launched
 							{
+								DEBUG_PRINT ("I7,");
 								//is batt OK to charge?
 								if ((Adc1Measurements.Batt_voltage) < (BATT_MAX_VOLTAGE+VoltHysteresisChg)
 										&& Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
 								{//yes, ok to charge
+									DEBUG_PRINT ("I8,");
 									BatteryMOS_ON();
 									StatCountFlagsWs.Ws_BattNoInv=1;	//enable to count energy to battery when INV isnt working, in 1Sectimer
 									StatCountFlagsWs.ChgAs=1;		//enable counting ampere-seconds
@@ -1971,19 +1980,23 @@ void InverterOn_batteryAsBackup(void)
 								}
 								else
 								{//no, batt not OK to charge
+									DEBUG_PRINT ("I9,");
 									BatteryMOS_OFF();
 									StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
 									VoltHysteresisChg = 0;
 									if ((Adc1Measurements.Batt_voltage) > (BATT_MAX_VOLTAGE+VoltHysteresisChg))
 									{//if battery fully charged, check if it was moment ago.
+										DEBUG_PRINT ("I10,");
 										StatCurrentWh.Chg_Ah_lastFull=StatCurrentWh.Chg_Ah_current;	//store fully chg Ah
 										if (!StatCountFlagsWs.Chg_cycle_c2 && StatCountFlagsWs.Chg_cycle_count)
 										{
+											DEBUG_PRINT ("I11,");
 											StatCurrentWh.Chg_Volt_lastFull = Adc1Measurements.Batt_voltage;	//store lastvoltage
 											StatCountFlagsWs.Chg_cycle_c2 = 1;
 										}
 										if (!StatCountFlagsWs.Chg_cycle_count)
 										{
+											DEBUG_PRINT ("I12,");
 											StatCountFlagsWs.Chg_cycle_count = 1; //if not, set flag 'fully charged' to count/set only once
 
 											StatCurrentWh.Dschg_Ah_current=0;	//clear discharge Ah
@@ -2003,7 +2016,7 @@ void InvOn_DischBattAtDay(void)
 	//switch INV ON only if  Inverter reset procedure isnt in progress
 	if (!FlagResetInverter) InverterMOS_ON();
 	//is inverter working?
-	if (Adc1Measurements.Inv_current > INV_CURRENT_MIN)
+	if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY)
 	{//yes, inverter working
 		StatCountFlagsWs.Ws_Inverter=1;	//inverter working, enable to count energy, in 1Sectimer
 		if (Adc1Measurements.PV_current < (INV_CURRENT_MAX/2)) BatteryMOS_ON();		//it's day, inv working, but not full sun-> connect battery as well
@@ -2063,28 +2076,25 @@ void InvOn_DischBattAtDay(void)
 void DischargeProcedure(void)
 {
 	//VoltHysteresisChg = 0;		//leave Chg hysteresis elevated for transition period during dusk
-	StatCountFlagsWs.Time_BattRecharge=0;	//you cant recharge during night, reset procedure
+	StatCountFlagsWs.Time_BattRecharge=0;	//you cant recharge during night, resetting the procedure state
 	StatCountFlagsWs.Time_NightTime=1;	//its nighttime, enable to count nightime in 1Sectimer
 	StatCountFlagsWs.Time_DuskTime=1;	//its nightitme, enable flag to count time passed from recent dusk;
-	if (StatCurrentWs.Time_DuskTime > 900 && !StatCountFlagsWs.ChgStatSaved)	//15 minutes in the night/after dusk store Chg_Ah_last
+	if (StatCurrentWs.Time_DuskTime > TIME_LOW_I_4NIGHT && !StatCountFlagsWs.StatsUpdated_pwrOff)	//45 minutes in the night/after dusk store Chg_Ah_last
 	{
-		StatCountFlagsWs.ChgStatSaved = 1;			//allow saving daytime stats at dusk only once
-		StatCurrentWh.Chg_Ah_3 = StatCurrentWh.Chg_Ah_2;
-		StatCurrentWh.Chg_Ah_2 = StatCurrentWh.Chg_Ah_1;
-		StatCurrentWh.Chg_Ah_1 = StatCurrentWh.Chg_Ah_last;
-		StatCurrentWh.Chg_Ah_last = StatCurrentWh.Chg_Ah_current;
-		StatCurrentWh.DayDuration_3 = StatCurrentWh.DayDuration_2;
-		StatCurrentWh.DayDuration_2 = StatCurrentWh.DayDuration_1;
-		StatCurrentWh.DayDuration_1 = StatCurrentWh.DayDuration_current;
-		StatCurrentWh.DayDuration_current = 0;
+		DEBUG_PRINT ("D1,");
+		//StatCurrentWh.DayDuration_current = 0;
+		StatCountFlagsWs.Dschg_cycle_count = 0;		//clr flag to enable dschg counter when batt empty
+		//StatCountFlagsWs.ChgStatSaved = 0; 		//clr flag to enable dschg counter when batt empty
+
 	}
 	//batt OK to discharge?
 	if (Adc1Measurements.Batt_voltage > (BATT_MIN_VOLTAGE-VoltHysteresisDsChg))
 	{//yes, OK to discharge
-		StatCountFlagsWs.Dschg_cycle_c2 = 0;		//flag enabling storage dsch stat when batt depleted
+		DEBUG_PRINT ("D2,");
 		StatCountFlagsWs.Dschg_cycle_count = 0;		//clear flag to enable dschg counter when batt empty
 		if (!FlagResetInverter)
-		{//if reset procedure isn't in progress, turn on batt mos and inv mos
+		{//if inverter reset procedure isn't in progress, turn on batt mos and inv mos
+			DEBUG_PRINT ("D3,");
 			//BatteryMOS_ON();
 			DelayedInvMosOn();
 		}
@@ -2092,12 +2102,14 @@ void DischargeProcedure(void)
 		VoltHysteresisDsChg = BATT_VOLTAGE_MINHYSTERESIS;	//hysteresis for discharge
 		if (FlagInverterMOS)
 		{
+			DEBUG_PRINT ("D4,");
 			StatCountFlagsWs.Ws_BattOut=1;	//enable to count energy taken from battery in 1Sectimer
 			StatCountFlagsWs.DschgAs=1;		//enable counting ampere-seconds
 		}
-		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN)
+		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_NIGHT)
 			if (StatCountFlagsWs.Chg_cycle_count)
 			{	//if battery was fully charged before night, increment counter of charge cycles as night starts
+				DEBUG_PRINT ("D5,");
 				StatCountFlagsWs.Chg_cycle_count=0;
 				StatCountFlagsWs.Chg_cycle_c2=0;
 				StatCurrentWh.Chg_cycle_count++;
@@ -2105,44 +2117,56 @@ void DischargeProcedure(void)
 	}
 	else
 	{//its night and not OK to discharge (battery fully discharged)
+		DEBUG_PRINT ("D6,");
 		VoltHysteresisDsChg = 0;
 		VoltHysteresisChg = 0;		//most likely will be cleared by uP reset anyway
-		if (!StatCountFlagsWs.Dschg_cycle_c2 && StatCountFlagsWs.Dschg_cycle_count)
-		{	//perform that only once at first enter to that procedure
-			StatCurrentWh.Dschg_Ah_lastFull_3 = StatCurrentWh.Dschg_Ah_lastFull_2;
-			StatCurrentWh.Dschg_Ah_lastFull_2 = StatCurrentWh.Dschg_Ah_lastFull_1;
-			StatCurrentWh.Dschg_Ah_lastFull_1 = StatCurrentWh.Dschg_Ah_lastFull;
-			StatCurrentWh.Dschg_Ah_lastFull = StatCurrentWh.Dschg_Ah_current;	//store fully dschg Ah
-			StatCurrentWh.Dschg_Volt_lastFull = Adc1Measurements.Batt_voltage;
-			StatCountFlagsWs.Dschg_cycle_c2 = 1;
-			StatCountFlagsWs.Chg_cycle_c2 = 0;
-#if FLASHSTATSAVE_PERIOD == 1	//FLASHSTATSAVE_PERIOD 1-when batt fully charged and discharged
-					Flag_StoreStatistics = 1;
-#endif
-		}
-		if (!StatCountFlagsWs.Dschg_cycle_count)	//if battery wasn't fully discharged before, but now it is; do that only once at full discharge
-		{	//increase full dschrg counter and set flag "dscharged"
-			StatCountFlagsWs.Dschg_cycle_count = 1;	//to count only once
-			StatCurrentWh.Dschg_cycle_count++;	//count only once
-			StatCountFlagsWs.Chg_cycle_count = 0;	//most likely will be cleared by system reset
-			StatCurrentWh.Chg_Ah_current=0;	//clear charge Ah, likely ill be cleared by reset
 //#if HW_VER > 01
 	//		BatteryMOS_OFF();		//disconnect battery from load (HW02>),
 //#else
 			InverterMOS_OFF();		//disconnect load (HW 01)
 //#endif
-			BatteryMOS_ON();		//battery sctually can be left ON - sometimes on cloudy evenings when battery depleted there is small current left in PV. below 100mA it can,t be consumed by inverter anyway.
+			BatteryMOS_ON();		//battery can be left ON - sometimes on cloudy evenings when battery depleted there is small current left in PV. below 100mA it can,t be consumed by inverter anyway.
+		if (Uptime.hours && (Uptime.minutes == TICKS_ONEHOUR)	//shut off/disconnect backup and batt pwr only if its dusk (not dawn) and update stats on last minute of the hour hour
+				&& !StatCountFlagsWs.Dschg_cycle_count
+				&& (StatCurrentWs.Time_DuskTime > TIME_LOW_I_4NIGHT))
+		{	//perform that only once at first enter to that procedure
+			DEBUG_PRINT ("D7,");
+			StatCurrentWh.Chg_Ah_3 = StatCurrentWh.Chg_Ah_2;		//chg stats
+			StatCurrentWh.Chg_Ah_2 = StatCurrentWh.Chg_Ah_1;
+			StatCurrentWh.Chg_Ah_1 = StatCurrentWh.Chg_Ah_last;
+			StatCurrentWh.Chg_Ah_last = StatCurrentWh.Chg_Ah_current;
+			StatCurrentWh.DayDuration_3 = StatCurrentWh.DayDuration_2;
+			StatCurrentWh.DayDuration_2 = StatCurrentWh.DayDuration_1;
+			StatCurrentWh.DayDuration_1 = StatCurrentWh.DayDuration_current;
+
+			StatCurrentWh.Dschg_Ah_lastFull_3 = StatCurrentWh.Dschg_Ah_lastFull_2;		//dchg stats
+			StatCurrentWh.Dschg_Ah_lastFull_2 = StatCurrentWh.Dschg_Ah_lastFull_1;
+			StatCurrentWh.Dschg_Ah_lastFull_1 = StatCurrentWh.Dschg_Ah_lastFull;
+			StatCurrentWh.Dschg_Ah_lastFull = StatCurrentWh.Dschg_Ah_current;	//store fully dschg Ah
+			StatCurrentWh.Dschg_Volt_lastFull = Adc1Measurements.Batt_voltage;
+			StatCountFlagsWs.Chg_cycle_c2 = 0;
+#if FLASHSTATSAVE_PERIOD == 1	//FLASHSTATSAVE_PERIOD 1-when batt fully charged and discharged
+					Flag_StoreStatistics = 1;
+#endif
+			StatCurrentWh.Dschg_cycle_count++;	//count only once
+			StatCountFlagsWs.Chg_cycle_count = 0;	//most likely will be cleared by system reset
+			StatCurrentWh.Chg_Ah_current=0;	//clear charge Ah, likely ill be cleared by reset
+			StatCountFlagsWs.ChgStatSaved = 1;
+			StatCountFlagsWs.Dschg_cycle_count = 1;
+			StatCountFlagsWs.StatsUpdated_pwrOff = 1;				//stats updated, enable sw off function
 		}
-		if (StatCountFlagsWs.Dschg_cycle_count && StatCountFlagsWs.Dschg_cycle_c2)
-		{//if stats updated, wait until it's saved
-			if (Uptime.minutes == 0	//and wait for statistics to be saved and then...
-					&& Uptime.seconds == 5)
+		if (StatCountFlagsWs.StatsUpdated_pwrOff)
+		{//if stats updated, wait until it's saved at the top of hour
+			if (Uptime.hours && (Uptime.minutes == 0)	//shut off/disconnect backup and batt pwr only if its dusk (not dawn)
+					&& (Uptime.seconds == 10))
 			{
+				DEBUG_PRINT ("D8,");
 #if HW_VER > 01
 			BackupPowerOFF();		//shut off controller completely
 #endif
 			InverterMOS_ON();		//can be left on, just in any case
 			BatteryMOS_OFF();		//shut off controller completely
+			//StatCountFlagsWs.StatsUpdated_pwrOff = 0;				//likely it will be cleared by reset
 			}
 		}
 	}
@@ -2157,7 +2181,8 @@ void PrintConfig2TxBuffer(void)
 				"NO_FLASH_PAGES %u, "
 				"MOSFET_MAX_TEMP %u, "
 				"PV_CURRENT_MIN %u, "
-				"INV_CURRENT_MIN %u, "
+				"INV_CURRENT_MIN_NIGHT %u, "
+				"INV_CURRENT_MIN_DAY %u, "
 				"PV_CURR_HYST %u, "
 				"PV_OCV_VOLGATE %u, "
 				"PV_OP_MIN_V %u, "
@@ -2170,8 +2195,8 @@ void PrintConfig2TxBuffer(void)
 				"TIME2OVLD_INV %u, "
 				"INV_CURRENT_MAX %u, "
 				"INV_CURR_SC %u, "
-				"\r\nStart\n\r"
-				,HW_VER,NO_FLASH_PAGES,MOSFET_MAX_TEMP,PV_CURRENT_MIN,INV_CURRENT_MIN,PV_CURRENT_HYST,PV_OCV_VOLGATE, PV_MIN_OP_VOLTAGE
+				"\r\nStart\n\n\r"
+				,HW_VER,NO_FLASH_PAGES,MOSFET_MAX_TEMP,PV_CURRENT_MIN,INV_CURRENT_MIN_NIGHT,INV_CURRENT_MIN_DAY,PV_CURRENT_HYST,PV_OCV_VOLGATE, PV_MIN_OP_VOLTAGE
 				,BATT_MIN_VOLTAGE,BATT_CRITICAL_MIN_VOLTAGE,BATT_MAX_VOLTAGE,BATT_VOLTAGE_MAXHYSTERESIS
 				,BATT_VOLTAGE_MINHYSTERESIS,TIME2RESET_INV, TIME2OVLD_INV, INV_CURRENT_MAX, INV_CURR_SC
 				);
@@ -2193,8 +2218,8 @@ void PrintFlashStats2TxBuffer(void)
 	    	    		"InvOvcCntr %u, InvExtRstCnt %u, "
 	    	    		"ChmAhLastF %u, DchmAhLastF %u, "
 	    	    		"DschVlastF %u, ChVlastF %u, "
-	    	    		"ChgAhlast %u, "
-	    	    		"\r\n"
+	    	    		"ChgAhlast %u"
+	    	    		"\r\n\n"
 	    	    ,(unsigned int)StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
 	    		,(unsigned int)StatCurrentWh.Wh_BattIn
 	    	    ,(unsigned int)StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
@@ -2225,10 +2250,12 @@ void ShowWhStats(void)
 			"ChmAhcur %u, DchmAhCur %u, "
 			"DchmAh-1 %u, DchmAh-2 %u, DchmAh-3 %u, "
 			"ChmAhLF %u, DchmAhLF %u, "
-			"ChgmAhL %u; ChgmAh-1 %u; ChgmAh-2 %u; ChgmAh-3 %u;"
+			"ChgmAhL %u; ChgmAh-1 %u; ChgmAh-2 %u; ChgmAh-3 %u, "
+			"ChgmAhtM %u, DschgmAhtM %u, "
+			"ChgmAhtB %u, DschgmAhtB %u, "
 			"DayCurr %u, Day-1 %u, "
 			"Day-2 %u, Day-3 %u, "
-    		"\r\n"
+    		"\r\n\n"
     ,(unsigned int )StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
 	,(unsigned int )StatCurrentWh.Wh_BattIn
     ,(unsigned int )StatCurrentWh.Wh_BattNoInv, (unsigned int )StatCurrentWh.Wh_BattOut
@@ -2239,6 +2266,8 @@ void ShowWhStats(void)
 	,(unsigned int)StatCurrentWh.Chg_Ah_lastFull, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull
 	,(unsigned int)StatCurrentWh.Dschg_Ah_lastFull_1, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull_2, (unsigned int)StatCurrentWh.Dschg_Ah_lastFull_3
 	,(unsigned int)StatCurrentWh.Chg_Ah_last, (unsigned int)StatCurrentWh.Chg_Ah_1, (unsigned int)StatCurrentWh.Chg_Ah_2, (unsigned int)StatCurrentWh.Chg_Ah_3
+	,(unsigned int)StatCurrentWh.Chg_Ah_tot_Mains, (unsigned int)StatCurrentWh.Dschg_Ah_tot_Mains
+	,(unsigned int)StatCurrentWh.Chg_Ah_tot_Batt, (unsigned int)StatCurrentWh.Dschg_Ah_tot_Batt
 	,(unsigned int)StatCurrentWh.DayDuration_current, (unsigned int)StatCurrentWh.DayDuration_1
 	,(unsigned int)StatCurrentWh.DayDuration_2, (unsigned int)StatCurrentWh.DayDuration_3
     );
@@ -2286,7 +2315,7 @@ void StartDefaultTask(void *argument)
 #endif
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 	osDelay(50);
-	if (HAL_ADC_Start_DMA(&hadc1, &Adc1RawReadings.Inv_current , sizeof(Adc1RawReadings)/sizeof(uint32_t)) != HAL_OK) return 0;
+	if (HAL_ADC_Start_DMA(&hadc1, &Adc1RawReadings.Inv_current , sizeof(Adc1RawReadings)/sizeof(uint32_t)) != HAL_OK) return ;
 
 	HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, 1);
 	HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 1);
@@ -2350,7 +2379,7 @@ void StartDefaultTask(void *argument)
         		"WsBattNoInv %u; Ws_BattOut %u, "
         		"WsBattRech %u; Ws_Inv %u, "
     			"DuskTime %u, DayDuration_cur %u, "
-    			"ChgmAs %u, DchgmAs %u, "
+    			"ChgmAs %u, DchgmAs %u"
         		"\r\n"
         ,(unsigned int )StatCurrentWs.Time_NightTime, (unsigned int )StatCurrentWs.Time_NoBattery2Chg, (unsigned int )StatCurrentWs.Time_NoInv
     	,(unsigned int )StatCurrentWs.Ws_BattIn
@@ -2379,7 +2408,7 @@ void StartDefaultTask(void *argument)
 				"temp PCB %u; invMOS %u; batMOS %u, "
 				" mAInv %u; mAPV %u; "
 				"VPV %u; VBat %u; "
-				"Ext_I %u, "
+				"Ext_I %u, Time2RInv %u, BlankT2RI %u"
 				"\r\n"
 		,(unsigned int )Uptime.days, (unsigned int )Uptime.hours, (unsigned int )Uptime.minutes, (unsigned int )Uptime.seconds
 		,(unsigned int )ConfigReg
@@ -2389,7 +2418,7 @@ void StartDefaultTask(void *argument)
 		,(unsigned int)Adc1Measurements.PV_current
 		,(unsigned int)Adc1Measurements.PV_voltage
 		,(unsigned int)Adc1Measurements.Batt_voltage	// (unsigned int)Adc1Measurements.Batt_voltage%100
-		,(unsigned int)FlagExt_I
+		,(unsigned int)FlagExt_I, (unsigned int)TimeToResetInv, (unsigned int)BlankingTimeToResetInv
 		);
 	}
     else if (Flag_ShowStats == 62)	//show calibration data
@@ -2406,13 +2435,14 @@ void StartDefaultTask(void *argument)
     	if (Flag_ShowStats) Flag_ShowStats--;
     	TxBuffer[0]=0;
     }
-    TxSize = strlen(TxBuffer);
-    if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
-    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
-
+//    TxSize = strlen(TxBuffer);
+//    if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
+//    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
+    sprintf(TxBuffer+strlen(TxBuffer)-2, "; _d_");
     if (Flag_StoreStatistics)
     	{
-    		StoreStatistics2FLASH();
+    	DEBUG_PRINT ("M1,");
+    	StoreStatistics2FLASH();
     		Flag_StoreStatistics=0;
     	}
 
@@ -2434,12 +2464,14 @@ void StartDefaultTask(void *argument)
 			if ((Adc1Measurements.PV_current > (PV_CURRENT_MIN + PVCurrentHysteresis) ||
 					Adc1Measurements.PV_voltage > PV_OCV_VOLGATE) && Adc1Measurements.PV_voltage > PV_MIN_OP_VOLTAGE)
 			{//yes, its day
+				DEBUG_PRINT ("M2,");
 				PVCurrentHysteresis = 0;	//to prevent multiple switching day/night at dawn and dusk
 				InverterOn_batteryAsBackup();
 				StatCountFlagsWs.Time_Daytime=1;		//enable to count daytime
 			}//end of its day
     		else
     		{//no, its night
+    			DEBUG_PRINT ("M3,");
     			PVCurrentHysteresis = PV_CURRENT_HYST;	//to prevent multiple switching day/night at dawn and dusk
     			DischargeProcedure();
     		}//closing "its night"
@@ -2460,12 +2492,14 @@ void StartDefaultTask(void *argument)
 			if ((Adc1Measurements.PV_current > (PV_CURRENT_MIN + PVCurrentHysteresis) ||
 					Adc1Measurements.PV_voltage > PV_OCV_VOLGATE) && Adc1Measurements.PV_voltage > PV_MIN_OP_VOLTAGE)
 			{//yes, its day
+				DEBUG_PRINT ("M4,");
 				PVCurrentHysteresis = 0;	//to prevent multiple switching day/night at dawn and dusk
 				StatCountFlagsWs.Time_Daytime=1;		//enable to count daytime
 				//is batt OK to charge
 				if (Adc1Measurements.Batt_voltage < (BATT_MAX_VOLTAGE+VoltHysteresisChg)  &&
 						Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
 				{//yes, ok to charge
+					DEBUG_PRINT ("M5,");
 					BatteryMOS_ON();
 					InverterMOS_OFF();
 					VoltHysteresisChg = BATT_VOLTAGE_MAXHYSTERESIS;
@@ -2475,21 +2509,25 @@ void StartDefaultTask(void *argument)
 				}
 				else
 				{//no, batt not OK to charge
+					DEBUG_PRINT ("M6,");
 					InverterMOS_ON();
 					BatteryMOS_OFF();
 					StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
 					VoltHysteresisChg = 0;
 					if ((Adc1Measurements.Batt_voltage) > (BATT_MAX_VOLTAGE+VoltHysteresisChg))
 					{//if battery fully charged, check if it was moment ago.
+						DEBUG_PRINT ("M7,");
 						StatCurrentWh.Chg_Ah_lastFull=StatCurrentWh.Chg_Ah_current;	//store fully chg Ah
 						if (!StatCountFlagsWs.Chg_cycle_c2 && StatCountFlagsWs.Chg_cycle_count)
 						{
+							DEBUG_PRINT ("M8,");
 							StatCurrentWh.Chg_Volt_lastFull = Adc1Measurements.Batt_voltage;	//store lastvoltage
 							StatCountFlagsWs.Chg_cycle_c2 = 1;
 							StatCountFlagsWs.Dschg_cycle_c2 = 0;
 						}
 						if (!StatCountFlagsWs.Chg_cycle_count)
 						{
+							DEBUG_PRINT ("M9,");
 							StatCountFlagsWs.Chg_cycle_count = 1; //if not, set flag 'fully charged' to count/set only once
 							StatCountFlagsWs.Dschg_cycle_count = 0;	//clear flag to enable dschg counter when batt empty
 							StatCurrentWh.Dschg_Ah_current=0;	//clear discharge Ah
@@ -2502,6 +2540,7 @@ void StartDefaultTask(void *argument)
 			}
 			else
 			{//no, its night
+				DEBUG_PRINT ("M10,");
 				PVCurrentHysteresis = PV_CURRENT_HYST;	//to prevent multiple switching day/night at dawn and dusk
 				DischargeProcedure();
 			}//closing "its night"
@@ -2534,7 +2573,12 @@ void StartDefaultTask(void *argument)
 			InvOn_DischBattAtDay();
 		}//closing "can switch INV ON"
     }//closing CONFIG 0x0F
-  }//closing main loop
+
+    sprintf(TxBuffer+strlen(TxBuffer), "\r\n");
+    TxSize = strlen(TxBuffer);
+	if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
+	HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
+  }//closing main, infinite loop
   /* USER CODE END 5 */
 }
 
