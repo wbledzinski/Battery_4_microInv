@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define EXT_CTRL_Pin GPIO_PIN_3
+#define EXT_CTRL_GPIO_Port GPIOA
 #define BATT_BCKP_DRV_Pin GPIO_PIN_4
 #define BATT_BCKP_DRV_GPIO_Port GPIOA
 #define BAT_SWITCH_PWM_Pin GPIO_PIN_5

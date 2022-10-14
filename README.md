@@ -10,6 +10,10 @@ Main idea is to connect 10S 36V/42V li-ion e-scooter/e-bike battery to grid-tied
 It can be done because microinverters use low voltage input (MPP is ~40V).
 So e-scooter battery has voltage exactly in operational range of microinverter and PV panel.
 
+###  ◾ What exactly does this device?
+Monitors energy consumption by microinverter. In case of inverter fault this device stores PV energy in battery.
+After dusk energy stored in battery might be tranfered via inverter to mains network.
+
 ###  ◾ Why that idea?
 It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon at sunny, cloudless day. During sunny day my inverters switch off several times. That causes loses in energy production, because at possible peak production my PV array do not generate energy at all. 
 
@@ -17,14 +21,15 @@ Solution is to detect inverter fault and switch PV to charge battery - at the sa
 
 ###  ◾ Modes of operation
 
-user can configure two modes of operation:
-1st mode is to tranfer energy from PV to inverter, charge battery only when inverter cautches fault; finally after dusk controller connects battery to microinverter to discharge battery to be ready (empty) for next sunny day
+user can configure controller in 3 modes:
+1st mode is to tranfer energy from PV to inverter, charge battery only when inverter cautches fault; finally after dusk controller connects battery to microinverter to transfer stored  energy from battery to mains
 2nd mode is to store energy in battery and connect inverter when battery is full. Then it will discharge battery after dusk
+3rd mode is to tranfer energy from PV to inverter, charge battery only when inverter cautches fault; no battery discharge
 
 ###  ◾ Delayed discharge
-2kW PV installation based on microinverters uses 5 PV panels, 10A each and 5 microinverters.
+My 2kW PV installation based on microinverters uses 5 PV panels, 11A each and 5 microinverters.
 Connecting 5 batteries with controllers I can set discharge delay independently for each controller.
-result is that i can discharge them one by one thru the night, making it possible to consume that energy by fridge, lighting and other appliances. Energy transfer to mains is only if I don't consume that energy.
+result is that i can discharge them one by one thru the night, making it possible to consume that energy by fridge, lighting and other appliances.
 
 ###  ◾ Operation statistics
 Firmware has built-in statistics counters, to estimate amount of energy transfered, recovered, number of microinverter faults
