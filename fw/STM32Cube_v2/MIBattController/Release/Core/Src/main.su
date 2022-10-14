@@ -12,8 +12,10 @@ main.c:852:6:RestoreStatisticsFromFLASH	24	static
 main.c:895:5:StoreStatistics2FLASH	40	static
 main.c:946:6:DeleteStatistics2FLASH	40	static
 main.c:978:6:Calculate_WattSeconds	16	static
-main.c:1087:6:Calculate_WattHours	20	static
+main.c:1087:6:Calculate_WattHours	24	static
 main.c:1122:6:ReadConfig	16	static
+main.c:1139:6:BackupPowerON	8	static
+main.c:1150:6:BackupPowerOFF	16	static
 main.c:1163:6:ExtOut_InvResetStart	136	static
 main.c:1174:6:ExtOut_InvResetStop	136	static
 main.c:1190:6:BatteryMOS_ON	128	static
@@ -23,7 +25,7 @@ main.c:1228:6:InverterMOS_OFF	8	static
 main.c:1234:10:ConvertNTCvalue	40	static
 main.c:1246:10:ConvertVValue	8	static
 main.c:1257:10:ConvertIValue	16	static
-main.c:1286:5:main	8	static
+main.c:1286:5:main	32	static
 main.c:1380:6:SystemClock_Config	112	static,ignoring_inline_asm
 main.c:1423:13:MX_ADC1_Init	40	static,ignoring_inline_asm
 main.c:1545:13:MX_TIM2_Init	64	static,ignoring_inline_asm

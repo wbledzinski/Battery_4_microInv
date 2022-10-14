@@ -51,7 +51,7 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -78,7 +78,7 @@
 #define BATT_MAX_VOLTAGE	403	//in 0.1V, consider max limit for charging with "+hysteresisMAX"
 #define BATT_VOLTAGE_MAXHYSTERESIS	18	//in 0.1V, to prevent frequent switching chg/dschg at max voltage
 #define BATT_VOLTAGE_MINHYSTERESIS	17	//in 0.1V, to prevent frequent switching chg/dschg at min voltage/ 15 makes multiple discharges at dusk - confuses statistics; maybe longer nigh-timeout will help
-#define SECONDS_HOUR		(TICKS_ONEMINUTE+1)*(TICKS_ONEHOUR+1)	//to calculate Watt-hours from Watt-seconds
+#define SECONDS_HOUR		((TICKS_ONEMINUTE+1)*(TICKS_ONEHOUR+1))	//to calculate Watt-hours from Watt-seconds
 #define LEDSTATUS_TIMER_LONG		9		//10 seconds cycle
 #define LEDSTATUS_TIMER_MED			3		//4 seconds cycle
 #define LEDSTATUS_TIMER_SHORT		1		//2 seconds cycle
