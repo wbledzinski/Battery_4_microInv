@@ -51,7 +51,7 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -66,9 +66,9 @@
 								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
 								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
 #define PV_CURRENT_HYST		70	//in 0.001A, PV curent hysteresis, to prevent frequent change chg/dschg during dusk and dawn
-#define INV_CURRENT_MIN_DAY		200	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually slightly smaller than PV_CURRENT_MIN
+#define INV_CURRENT_MIN_DAY		230	//in 0.001A, min inverter current to assume that inv transfers energy to mains. usually slightly smaller than PV_CURRENT_MIN
 								//to prevent switchung battery on/off at daytime at dusk . difference should cover current measurement error for small currents between channels
-#define INV_CURRENT_MIN_NIGHT		250	//in 0.001A, min inverter current to assume that inv transfers energy to mains.
+#define INV_CURRENT_MIN_NIGHT		270	//in 0.001A, min inverter current to assume that inv transfers energy to mains.
 #define INV_CURRENT_MAX		13500	//in 0.001A, maximum inverter current during batttery discharging. Helps prevent overheating
 #define INV_CURR_SC			16500	//in 0.001A, more than that is considered as short circuit, all will be shut down without delay (in 1 second)
 #define PV_OCV_VOLGATE		435	//in 0.1V, OCV voltage for PV panel without load (minimal PV OCV voltage for hot, cloudy day)
@@ -2019,10 +2019,11 @@ void InverterOn_batteryAsBackup(void)
 								}
 								else
 								{//no, batt not OK to charge
-									if (Adc1Measurements.NTC1_PCB > MIN_CHARGING_TEMP)
+									if (Adc1Measurements.NTC1_PCB < MIN_CHARGING_TEMP)
 									{
 										DEBUG_PRINT ("I8a,");
 										StatCountFlagsWs.Time_NoBattery2Chg_uTemp = 1;
+										BatteryMOS_OFF();
 									}
 									else
 									{
@@ -2246,7 +2247,7 @@ void ShowWhStats(void)
 			"ChgmAhtM %u, DschgmAhtM %u, "
 			"ChgmAhtB %u, DschgmAhtB %u, "
 			"DayCurr %u, Day-1 %u, "
-			"Day-2 %u, Day-3 %u, "
+			"Day-2 %u, Day-3 %u"
     		"\r\n\n"
     ,(unsigned int )StatCurrentWh.FlashPageCounter, (unsigned int )StatCurrentWh.Time_NightTime, (unsigned int )StatCurrentWh.Time_NoBattery2Chg, (unsigned int )StatCurrentWh.Time_NoInv
 	,(unsigned int )StatCurrentWh.Wh_BattIn, (unsigned int)StatCurrentWh.Time_NoBattery2Chg_uTemp
@@ -2267,7 +2268,7 @@ void ShowWhStats(void)
 
 void PrintfCalData(void)
 {
-	sprintf(TxBuffer, "Cal Data: Indicator %u:   "
+	sprintf(TxBuffer+strlen(TxBuffer), "Cal Data: Indicator %u:   "
 	        		"Inv_I_offsetmA %u; PV_I_offsetmA %u; "
 	        		"PVV_off %u; BattV_off %u, "
 	        		"NTC_PCB_off %u; NTC_INV_off %u, "
@@ -2341,6 +2342,7 @@ void StartDefaultTask(void *argument)
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
 	osDelay(20);
+	TxBuffer[0]=0;	//clr buffer length, PrintfCalData() appends text to the end of previous text
     PrintfCalData();
     TxSize = strlen(TxBuffer);
     HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
@@ -2432,7 +2434,7 @@ void StartDefaultTask(void *argument)
 //    TxSize = strlen(TxBuffer);
 //    if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
 //    HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
-    sprintf(TxBuffer+strlen(TxBuffer)-2, "; _d_");
+    sprintf(TxBuffer+strlen(TxBuffer)-2, "d_");
     if (Flag_StoreStatistics)
     	{
     	DEBUG_PRINT ("M1,");
@@ -2652,7 +2654,7 @@ void StartDefaultTask(void *argument)
 		}//closing "can switch INV ON"
     }//closing CONFIG 0x0F
 
-    sprintf(TxBuffer+strlen(TxBuffer), "\r\n");
+    sprintf(TxBuffer+strlen(TxBuffer), "\r\n");	//\r\n
     TxSize = strlen(TxBuffer);
 	if (TxSize>TX_BFR_SIZE) TxSize=TX_BFR_SIZE;
 	HAL_UART_Transmit_DMA(&huart1, (uint8_t*)TxBuffer, TxSize);
