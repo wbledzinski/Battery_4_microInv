@@ -51,7 +51,7 @@
 # define DEBUG_PRINT(x) do {} while (0)
 #endif
 #define FLASHSTATSAVE_PERIOD	0	//0- stats saved every hour; 1-stats saved only when fully ch/discharged
-#define HW_VER		01		//1st rev 01; 2nd rev 02; etc.
+#define HW_VER		02		//1st rev 01; 2nd rev 02; etc.
 #ifndef TESTING_VALUES		//********* below are PRODUCTION VALUES ************
 #define TICKS_ONESECOND	0	//counter ticks for one second (default 0)
 #define TICKS_ONEMINUTE	59	//counter ticks for one minute (default 59)
@@ -61,7 +61,7 @@
 #define TX_BFR_SIZE 1023		//uart 1
 #define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		70	//Mosfet max operating temperature *C
-#define MIN_CHARGING_TEMP	5	//PCB minimum temperature that can allows  high charging current for battery charging (over INV_CURRENT_MIN_NIGHT limit, 0.3A)
+#define MIN_CHARGING_TEMP	2	//PCB minimum temperature that allows high charging current for battery charging (> INV_CURRENT_MIN_NIGHT limit, 0.3A). <INV_CURRENT_MIN_NIGHT still possible;
 #define PV_CURRENT_MIN		320	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
 								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
 								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
@@ -216,9 +216,9 @@ typedef struct
 	uint32_t PV_current;
 	uint32_t PV_voltage;
 	uint32_t Batt_voltage;
-	uint32_t NTC1_PCB;
-	uint32_t NTC2_Inverter_mos;
-	uint32_t NTC3_Battery_mos;
+	int NTC1_PCB;
+	int NTC2_Inverter_mos;
+	int NTC3_Battery_mos;
 	uint32_t VrefInt;
 }AdcConvertVals;
 
@@ -1231,15 +1231,24 @@ void InverterMOS_OFF(void)
 	FlagInverterMOS = 0;
 }
 
-uint32_t ConvertNTCvalue(uint32_t RawReading)
+int ConvertNTCvalue(uint32_t RawReading)
 {
-double i, y;
-uint32_t t;
+float i, y;
+int t;
 	      i = (double) RawReading;	//
 	      //y = -3*pow(10,-15)*pow(i,5) + 3*pow(10,-11)*pow(i,4)-pow(10,-7)*pow(i,3)+0.0002*pow(i,2)-0.2204*i+138.71;
+//	      y = -7*pow(10,-9)*pow(i,3) + 5*pow(10,-5)*pow(i,2)-0.1154*i+123.68;
+#if HW_VER < 03
+	      //equation below gives real measurement accuracy +/- 2*C
+	      //equations below are from calculation and xls regression of NTC + divider characteristics, vref==vcc; as curve fitting use GNUPLOT ONLY! excell has too big rounding errors!
+	      //y = -2*pow(10,-15)*pow(i,5) + 2*pow(10,-11)*pow(i,4) - 8*pow(10,-8)*pow(i,3) + 0.0002*pow(i,2) - 0.2113*i + 157.74;	//EXCEL
+	      y = -1.77724977356014*pow(10,-15)*pow(i,5) + 1.95056650144886*pow(10,-11)*pow(i,4) - 8.37270914582095*pow(10,-8)*pow(i,3) + 0.000176406553942413*pow(i,2) - 0.210955882024747*i + 157.654476069073;	//GNUPLOT
+
+#else
 	      y = -7*pow(10,-9)*pow(i,3) + 5*pow(10,-5)*pow(i,2)-0.1154*i+123.68;
-	      t = (uint32_t) y;
-	      t = (t - 13);				// some offset removal
+#endif
+	      t = (int) y;
+	      //t = (t - 13);				// some offset removal
 	      return t;	//result in *C
 }
 
@@ -2019,7 +2028,7 @@ void InverterOn_batteryAsBackup(void)
 								}
 								else
 								{//no, batt not OK to charge
-									if (Adc1Measurements.NTC1_PCB < MIN_CHARGING_TEMP)
+									if (Adc1Measurements.NTC1_PCB <= MIN_CHARGING_TEMP)
 									{
 										DEBUG_PRINT ("I8a,");
 										StatCountFlagsWs.Time_NoBattery2Chg_uTemp = 1;
@@ -2493,7 +2502,8 @@ void StartDefaultTask(void *argument)
 				StatCountFlagsWs.Time_Daytime=1;		//enable to count daytime
 				//is batt OK to charge
 				if (Adc1Measurements.Batt_voltage < (BATT_MAX_VOLTAGE+VoltHysteresisChg)  &&
-						Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
+						Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE
+						&& (Adc1Measurements.NTC1_PCB > MIN_CHARGING_TEMP || !CalibrationValues.UnderTempLimit4Charging)) // if >5*C OR limit OFF THEN charge
 				{//yes, ok to charge
 					DEBUG_PRINT ("M5,");
 					BatteryMOS_ON();
@@ -2505,11 +2515,19 @@ void StartDefaultTask(void *argument)
 				}
 				else
 				{//no, batt not OK to charge
-					DEBUG_PRINT ("M6,");
+					if (Adc1Measurements.NTC1_PCB <= MIN_CHARGING_TEMP)
+					{
+						DEBUG_PRINT ("M6a,");
+						StatCountFlagsWs.Time_NoBattery2Chg_uTemp = 1;
+					}
+					else
+					{
+						DEBUG_PRINT ("M6b,");
+						StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
+						VoltHysteresisChg = 0;
+					}
 					InverterMOS_ON();
 					BatteryMOS_OFF();
-					StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
-					VoltHysteresisChg = 0;
 					if ((Adc1Measurements.Batt_voltage) > (BATT_MAX_VOLTAGE+VoltHysteresisChg))
 					{//if battery fully charged, check if it was moment ago.
 						DEBUG_PRINT ("M7,");
@@ -2602,9 +2620,10 @@ void StartDefaultTask(void *argument)
 					{//energy to battery
 						//is batt OK to charge
 						if (Adc1Measurements.Batt_voltage < (BATT_MAX_VOLTAGE+VoltHysteresisChg)  &&
-								Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE)
+								Adc1Measurements.Batt_voltage > BATT_CRITICAL_MIN_VOLTAGE
+								&& (Adc1Measurements.NTC1_PCB > MIN_CHARGING_TEMP || !CalibrationValues.UnderTempLimit4Charging)) // if >5*C OR limit OFF THEN charge
 						{//yes, ok to charge
-							DEBUG_PRINT ("M5,");
+							DEBUG_PRINT ("M14,");
 							BatteryMOS_ON();
 							InverterMOS_OFF();
 							VoltHysteresisChg = BATT_VOLTAGE_MAXHYSTERESIS;
@@ -2614,25 +2633,34 @@ void StartDefaultTask(void *argument)
 						}
 						else
 						{//no, batt not OK to charge
-							DEBUG_PRINT ("M6,");
+							if (Adc1Measurements.NTC1_PCB <= MIN_CHARGING_TEMP)
+							{
+								DEBUG_PRINT ("M15a,");
+								StatCountFlagsWs.Time_NoBattery2Chg_uTemp = 1;
+							}
+							else
+							{
+								DEBUG_PRINT ("M15b,");
+								StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
+								VoltHysteresisChg = 0;
+							}
+							DEBUG_PRINT ("M16,");
 							InverterMOS_ON();
 							BatteryMOS_OFF();
-							StatCountFlagsWs.Time_NoBattery2Chg=1;	//enable to count time without possibility to charge battery, in 1Sectimer
-							VoltHysteresisChg = 0;
 							if ((Adc1Measurements.Batt_voltage) > (BATT_MAX_VOLTAGE+VoltHysteresisChg))
 							{//if battery fully charged, check if it was moment ago.
-								DEBUG_PRINT ("M7,");
+								DEBUG_PRINT ("M17,");
 								StatCurrentWh.Chg_Ah_lastFull=StatCurrentWh.Chg_Ah_current;	//store fully chg Ah
 								if (!StatCountFlagsWs.Chg_cycle_c2 && StatCountFlagsWs.Chg_cycle_count)
 								{
-									DEBUG_PRINT ("M8,");
+									DEBUG_PRINT ("M18,");
 									StatCurrentWh.Chg_Volt_lastFull = Adc1Measurements.Batt_voltage;	//store lastvoltage
 									StatCountFlagsWs.Chg_cycle_c2 = 1;
 									StatCountFlagsWs.Dschg_cycle_c2 = 0;
 								}
 								if (!StatCountFlagsWs.Chg_cycle_count)
 								{
-									DEBUG_PRINT ("M9,");
+									DEBUG_PRINT ("M19,");
 									StatCountFlagsWs.Chg_cycle_count = 1; //if not, set flag 'fully charged' to count/set only once
 									StatCountFlagsWs.Dschg_cycle_count = 0;	//clear flag to enable dschg counter when batt empty
 									StatCurrentWh.Dschg_Ah_current=0;	//clear discharge Ah
@@ -2646,7 +2674,7 @@ void StartDefaultTask(void *argument)
 				}//end of its day
 				else
 				{//no, its night
-					DEBUG_PRINT ("M14,");
+					DEBUG_PRINT ("M20,");
 					PVCurrentHysteresis = PV_CURRENT_HYST;	//to prevent multiple switching day/night at dawn and dusk
 					DischargeProcedure();
 				}//closing "its night"
