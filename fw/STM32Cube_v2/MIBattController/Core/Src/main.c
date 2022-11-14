@@ -61,7 +61,7 @@
 #define TX_BFR_SIZE 1023		//uart 1
 #define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		70	//Mosfet max operating temperature *C
-#define MIN_CHARGING_TEMP	2	//PCB minimum temperature that allows high charging current for battery charging (> INV_CURRENT_MIN_NIGHT limit, 0.3A). <INV_CURRENT_MIN_NIGHT still possible;
+#define MIN_CHARGING_TEMP	9	//PCB minimum temperature that allows high charging current for battery charging (> INV_CURRENT_MIN_NIGHT limit, 0.3A). <INV_CURRENT_MIN_NIGHT still possible;
 #define PV_CURRENT_MIN		320	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
 								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
 								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
@@ -2379,14 +2379,14 @@ void StartDefaultTask(void *argument)
     else if (Flag_ShowStats == 2)
     {
     	Flag_ShowStats = 1;
-    	sprintf(TxBuffer, "Ws.TNightTime %u,TNoBat2Chg %u,TNoInv %u, "
+    	sprintf(TxBuffer, "Ws.TNightTime %u,TNoBat2Chg %u, TNoBat2ChguT %u, TNoInv %u, "
         		"WsBattIn %u; "
         		"WsBattNoInv %u; Ws_BattOut %u, "
         		"WsBattRech %u; Ws_Inv %u, "
     			"DuskTime %u, DayDuration_cur %u, "
     			"ChgmAs %u, DchgmAs %u"
         		"\r\n"
-        ,(unsigned int )StatCurrentWs.Time_NightTime, (unsigned int )StatCurrentWs.Time_NoBattery2Chg, (unsigned int )StatCurrentWs.Time_NoInv
+        ,(unsigned int )StatCurrentWs.Time_NightTime, (unsigned int )StatCurrentWs.Time_NoBattery2Chg, (unsigned int )StatCurrentWs.Time_NoBattery2Chg_uTemp, (unsigned int )StatCurrentWs.Time_NoInv
     	,(unsigned int )StatCurrentWs.Ws_BattIn
         ,(unsigned int )StatCurrentWs.Ws_BattNoInv, (unsigned int )StatCurrentWs.Ws_BattOut
     	,(unsigned int )StatCurrentWs.Ws_BattRecharge, (unsigned int )StatCurrentWs.Ws_Inverter
