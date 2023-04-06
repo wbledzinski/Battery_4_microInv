@@ -61,7 +61,7 @@
 #define TX_BFR_SIZE 1023		//uart 1
 #define NO_FLASH_PAGES	52	//number of flash pages for storing statistics to flash
 #define MOSFET_MAX_TEMP		70	//Mosfet max operating temperature *C
-#define MIN_CHARGING_TEMP	9	//PCB minimum temperature that allows high charging current for battery charging (> INV_CURRENT_MIN_NIGHT limit, 0.3A). <INV_CURRENT_MIN_NIGHT still possible;
+#define MIN_CHARGING_TEMP	4	//PCB minimum temperature that allows high charging current for battery charging (> INV_CURRENT_MIN_NIGHT limit, 0.3A). <INV_CURRENT_MIN_NIGHT still possible;
 #define PV_CURRENT_MIN		320	//in 0.001A, min PV curent to assume that it is daylight - for alghorithm. after HAL_ADC_Calibration values for current circuit are of bigger values - instead 120mA it returns 350mA
 								//current>PV_CURRENT_MIN to enter DAYTIME; (PV_CURRENT_MIN - PV_CURRENT_HYST) to keep "DAYTIME"; current<(PV_CURRENT_MIN - PV_CURRENT_HYST) to enter nightime; current<PV_CURRENT_MIN to keep nightime
 								//this value sets minimal level of current that can make inverter working without excessive reactive power at mains side(AC current)
@@ -544,7 +544,7 @@ void ResetInverterDay(void)
 	{
 	case 0:
 #if HW_VER > 01
-		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY && FlagExt_I == 0)
+		if ((Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY) && (FlagExt_I == 0))
 #else
 		if (Adc1Measurements.Inv_current > INV_CURRENT_MIN_DAY )
 #endif
@@ -579,14 +579,18 @@ void ResetInverterDay(void)
 		StateResetInv++;
 		sprintf(TxBuffer+strlen(TxBuffer), "RID2,");
 		break;
-	case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26:
-		//ON inverter MOS and wait 10 seconds
+	case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26: case 27: case 28: case 29: case 30:
+	case 31: case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: case 40: case 41: case 42: case 43: case 44: case 45: case 46: case 47: case 48: case 49: case 50:
+	case 51: case 52: case 53: case 54: case 55: case 56: case 57: case 58: case 59: case 60: case 61: case 62: case 63: case 64: case 65: case 66: case 67: case 68: case 69: case 70:
+	case 71: case 72: case 73: case 74: case 75: case 76: case 77: case 78: case 79: case 80:
+	case 81: case 82: case 83: case 84: case 85: case 86: case 87: case 88: case 89: case 90:
+		//ON inverter MOS and wait 10 seconds. 2023 firmware seems to like longer "OCV" state to setup MPPT -> extended to 70 seconds
 		InverterMOS_ON();
 		StateResetInv++;
 		ExtOut_InvResetStop();
 		sprintf(TxBuffer+strlen(TxBuffer), "RID3,");
 		break;
-	case 27:	//now return to regular operation of controller
+	case 91:	//now return to regular operation of controller
 		StateResetInv=0;
 		FlagResetInverter = 0;	//procedure is off
 		TimeToResetInv = TIME2RESET_INV;	//reset timer for 30 minutes
@@ -731,14 +735,28 @@ void LedStatusShow(void)
 		HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 0);
 		HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 0);
 		HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, 0);
+		if (StatCountFlagsWs.Time_NoBattery2Chg_uTemp)	//under temperature condition, cant charge battery
+		{
+			HAL_GPIO_WritePin(LED3_GPIO_Port, LED2_Pin, 1);
+		}
 	}
 	else //once a period 1-4-10seconds (LEDSTATUS_TIMER)
-	{//highest priority to show
+	{
+		HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, 0);
+		HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 0);
+		HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 0);
+		HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, 0);
+		//highest priority to show
 		if (Adc1Measurements.NTC3_Battery_mos>MOSFET_MAX_TEMP || Adc1Measurements.NTC2_Inverter_mos>MOSFET_MAX_TEMP)	//powerMOSFET OVT 0
 		{
 			if (Adc1Measurements.NTC3_Battery_mos>MOSFET_MAX_TEMP) HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, 1);
 			if (Adc1Measurements.NTC2_Inverter_mos>MOSFET_MAX_TEMP) HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, 1);
 			HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, 1);
+			LedStatusTimer = LEDSTATUS_TIMER_SHORT;
+		}
+		if (StatCountFlagsWs.Time_NoBattery2Chg_uTemp)	//under temperature condition, cant charge battery
+		{
+			HAL_GPIO_WritePin(LED3_GPIO_Port, LED1_Pin, 1);
 			LedStatusTimer = LEDSTATUS_TIMER_SHORT;
 		}
 		else if (StatCountFlagsWs.Time_NoBattery2Chg)	//cant charge battery (its full) 1 high priority
@@ -1998,6 +2016,7 @@ void InverterOn_batteryAsBackup(void)
 							StatCountFlagsWs.Ws_Inverter=1;	//inverter working, enable to count energy, in 1Sectimer
 							BatteryMOS_OFF();		//it's day, inv working-> switch off battery mos
 							StatCountFlagsWs.InvFault = 0;	//flag to clear invfault occurence
+							TimeToResetInv = TIME2RESET_INV;	//reset time to 30 minutes if inv is working
 						}
 						else
 						{//it's day, inv is not working
@@ -2410,7 +2429,7 @@ void StartDefaultTask(void *argument)
 		sprintf(TxBuffer, "%u d %u h %u m %u s "
 				"conf %u, "
 				"stat: %u invMOS; %u batMOS, %u bckpMOS, "
-				"temp PCB %u; invMOS %u; batMOS %u, "
+				"temp PCB %i; invMOS %i; batMOS %i, "
 				" mAInv %u; mAPV %u; "
 				"VPV %u; VBat %u; "
 				"Ext_I %u, Ext_ctr %u, Time2RInv %u, BlankT2RI %u"
@@ -2418,7 +2437,7 @@ void StartDefaultTask(void *argument)
 		,(unsigned int )Uptime.days, (unsigned int )Uptime.hours, (unsigned int )Uptime.minutes, (unsigned int )Uptime.seconds
 		,(unsigned int )ConfigReg
 		,(unsigned int )FlagInverterMOS, (unsigned int )FlagBatteryMOS, (unsigned int)FlagBackupMOS
-		,(unsigned int )Adc1Measurements.NTC1_PCB, (unsigned int )Adc1Measurements.NTC2_Inverter_mos, (unsigned int )Adc1Measurements.NTC3_Battery_mos
+		,(int )Adc1Measurements.NTC1_PCB, (int)Adc1Measurements.NTC2_Inverter_mos, (int )Adc1Measurements.NTC3_Battery_mos
 		,(unsigned int)Adc1Measurements.Inv_current
 		,(unsigned int)Adc1Measurements.PV_current
 		,(unsigned int)Adc1Measurements.PV_voltage
@@ -2466,9 +2485,10 @@ void StartDefaultTask(void *argument)
     		//is it day?
     		//caution: too high PV_CURRENT_MIN causes troublesome starting at dawn, controllers disables BATMOSON (batt discharged) but PV current is too weak to keep INVerter operational
     		//too low PV_CURRENT_MIN causes troublesome change operation mode at dusk - inverter causes restarts of controller overloading weak PV current source
-			if ((Adc1Measurements.PV_current > (PV_CURRENT_MIN + PVCurrentHysteresis) ||
-					Adc1Measurements.PV_voltage > PV_OCV_VOLGATE) && Adc1Measurements.PV_voltage > PV_MIN_OP_VOLTAGE)
-			{//yes, its day
+			if (((Adc1Measurements.PV_current > (PV_CURRENT_MIN + PVCurrentHysteresis)) ||		//significant current from PV OR
+					((Adc1Measurements.PV_voltage > PV_OCV_VOLGATE) && (Adc1Measurements.PV_voltage > PV_MIN_OP_VOLTAGE))) //voltage higher than battery voltage OR
+				)//|| ((Adc1Measurements.NTC1_PCB < MIN_CHARGING_TEMP) && CalibrationValues.UnderTempLimit4Charging)) // if <5*C AND limit ON THEN do...
+			{//yes, its day (or its too cold to
 				DEBUG_PRINT ("M2,");
 				PVCurrentHysteresis = 0;	//to prevent multiple switching day/night at dawn and dusk
 				InverterOn_batteryAsBackup();
