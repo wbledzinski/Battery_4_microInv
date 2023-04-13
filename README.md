@@ -15,11 +15,9 @@ Monitors energy consumption by microinverter. In case of inverter fault this dev
 After dusk energy stored in battery might be tranfered via inverter to mains network.
 
 ###  Why that idea?
-It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon at sunny, cloudless day.
+It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon on sunny, cloudless day.
 
-.. figure:: (/photo/energy_meter_L3voltage.jpg)
-    :align: center
-    :width: 70.0%
+![Energy meter phase L3 voltage measurement, during *inverters fight* ](/photo/energy_meter_L3voltage.jpg)
 
 During sunny day my inverters switch off several times. That causes loses in energy production, because at possible peak production my PV array does not generate energy at all. 
 
