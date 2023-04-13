@@ -15,7 +15,13 @@ Monitors energy consumption by microinverter. In case of inverter fault this dev
 After dusk energy stored in battery might be tranfered via inverter to mains network.
 
 ###  Why that idea?
-It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon at sunny, cloudless day. During sunny day my inverters switch off several times. That causes loses in energy production, because at possible peak production my PV array do not generate energy at all. 
+It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon at sunny, cloudless day.
+
+.. figure:: photo/energy_meter_L3voltage.jpg
+    :align: center
+    :width: 70.0%
+
+During sunny day my inverters switch off several times. That causes loses in energy production, because at possible peak production my PV array does not generate energy at all. 
 
 Solution is to detect inverter fault and switch PV to charge battery - at the same time waiting for inverter to recover. Usually it's less than 10 minutes. But it happens dozens times during sunny day. Energy from battery is transferred to inverter (and mains) after dusk.
 
@@ -49,7 +55,7 @@ Real statistics, from dec 2022 to apr 2023:
 -----------------------------------------
 Battery size 20Ah 10S battery, wintertime, single energy bank:
 - Inverter not operational 655876 seconds (182 hours)
-- battery too cold to charge 336885 seconds (93 hours) - energy not transfered to main, and not stored in battery (too cold)
+- battery too cold to charge 336885 seconds (93 hours) - energy not transfered to mains and not stored in battery (too cold)
 - energy transferred from battery after dusk: Wh 16250
 - energy transferred from PV to microinverter: Wh 84890
 
