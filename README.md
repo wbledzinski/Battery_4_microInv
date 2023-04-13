@@ -17,7 +17,7 @@ After dusk energy stored in battery might be tranfered via inverter to mains net
 ###  Why that idea?
 It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon at sunny, cloudless day.
 
-.. figure:: (photo/energy_meter_L3voltage.jpg)
+.. figure:: (/photo/energy_meter_L3voltage.jpg)
     :align: center
     :width: 70.0%
 
