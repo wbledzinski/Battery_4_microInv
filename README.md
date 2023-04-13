@@ -15,11 +15,11 @@ Monitors energy consumption by microinverter. In case of inverter fault this dev
 After dusk energy stored in battery might be tranfered via inverter to mains network.
 
 ###  Why that idea?
-It's because photovoltaic is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon on sunny, cloudless day.
+It's because photovoltaics is very popular in village area where i've built my house. The result is that mains voltage is to high to properly operate any inverter around noon on sunny, cloudless day.
 
 ![Energy meter phase L3 voltage measurement, during *inverters fight*](/photo/energy_meter_L3voltage.jpg)
 
-During sunny day my inverters switch off several times. That causes loses in energy production, because at possible peak production my PV array does not generate energy at all. 
+During sunny day my inverters (and neighbours' as well) switch off several times. That causes loses in energy production, because at possible peak production my PV array does not generate energy at all. 
 
 Solution is to detect inverter fault and switch PV to charge battery - at the same time waiting for inverter to recover. Usually it's less than 10 minutes. But it happens dozens times during sunny day. Energy from battery is transferred to inverter (and mains) after dusk.
 
